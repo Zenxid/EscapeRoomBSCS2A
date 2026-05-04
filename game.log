@@ -1,0 +1,68 @@
+[2026-04-30 17:34:16] DB initialised — arena.db ready
+[2026-04-30 17:34:16] Application started
+[2026-04-30 18:02:42] DB initialised — arena.db ready
+[2026-04-30 18:02:42] Application started
+[2026-04-30 18:03:14] REGISTER: test
+[2026-04-30 18:03:19] LOGIN_OK: test
+[2026-04-30 18:18:19] RUN_SAVED: player=1 escaped=False time=900s room=lab
+[2026-05-02 18:47:50] DB initialised — arena.db ready
+[2026-05-02 18:47:50] Application started
+[2026-05-02 18:48:17] DB initialised — arena.db ready
+[2026-05-02 18:48:17] Application started
+[2026-05-02 18:48:39] REGISTER: test
+[2026-05-02 18:48:45] LOGIN_OK: test
+[2026-05-02 18:49:04] Mode selected: cli by test
+[2026-05-02 18:54:46] Mode selected: gui by test
+[2026-05-02 18:54:51] Mode selected: mixed by test
+[2026-05-03 17:30:30] DB initialised — arena.db ready
+[2026-05-03 17:30:30] Application started
+[2026-05-03 17:30:42] LOGIN_OK: test
+[2026-05-03 17:48:36] DB initialised — arena.db ready
+[2026-05-03 17:48:36] Application started
+[2026-05-03 17:48:46] LOGIN_OK: test
+[2026-05-03 17:49:17] DB initialised — arena.db ready
+[2026-05-03 17:49:17] Application started
+[2026-05-03 17:50:40] DB initialised — arena.db ready
+[2026-05-03 17:50:40] Application started
+[2026-05-03 17:50:47] DB initialised — arena.db ready
+[2026-05-03 17:50:47] Application started
+[2026-05-03 17:50:54] DB initialised — arena.db ready
+[2026-05-03 17:50:54] Application started
+[2026-05-03 17:58:14] DB initialised — arena.db ready
+[2026-05-03 17:58:14] Application started
+[2026-05-03 17:58:21] DB initialised — arena.db ready
+[2026-05-03 17:58:21] Application started
+[2026-05-03 17:58:27] DB initialised — arena.db ready
+[2026-05-03 17:58:27] Application started
+[2026-05-03 18:00:26] DB initialised — arena.db ready
+[2026-05-03 18:00:26] Application started
+[2026-05-03 18:00:54] DB initialised — arena.db ready
+[2026-05-03 18:00:54] Application started
+[2026-05-03 18:03:03] DB initialised — arena.db ready
+[2026-05-03 18:03:03] Application started
+[2026-05-03 18:06:00] DB initialised — arena.db ready
+[2026-05-03 18:06:00] Application started
+[2026-05-03 18:06:06] DB initialised — arena.db ready
+[2026-05-03 18:06:06] Application started
+[2026-05-03 18:06:12] DB initialised — arena.db ready
+[2026-05-03 18:06:12] Application started
+[2026-05-03 18:11:32] DB initialised — arena.db ready
+[2026-05-03 18:11:32] Application started
+[2026-05-03 18:12:18] DB initialised — arena.db ready
+[2026-05-03 18:12:18] Application started
+[2026-05-03 18:12:27] DB initialised — arena.db ready
+[2026-05-03 18:12:27] Application started
+[2026-05-03 18:12:33] DB initialised — arena.db ready
+[2026-05-03 18:12:33] Application started
+[2026-05-03 18:12:39] DB initialised — arena.db ready
+[2026-05-03 18:12:39] Application started
+[2026-05-04 16:17:22] DB initialised — arena.db ready
+[2026-05-04 16:17:22] Application started
+[2026-05-04 16:17:31] LOGIN_OK: test
+[2026-05-04 16:18:47] Mode selected: mixed by test
+[2026-05-04 16:19:11] Mode selected: mixed by test
+[2026-05-04 16:19:15] Mode selected: gui by test
+[2026-05-04 16:19:43] Mode selected: gui by test
+[2026-05-04 16:19:48] Mode selected: cli by test
+[2026-05-04 16:19:54] Mode selected: gui by test
+[2026-05-04 16:20:12] Mode selected: mixed by test

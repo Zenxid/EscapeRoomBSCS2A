@@ -1,0 +1,27 @@
+{
+  "storage": {
+    "name": "Storage Room \u2014 Level B2",
+    "puzzles": [
+      "toolbox",
+      "cabinet"
+    ]
+  },
+  "lab": {
+    "name": "Research Lab \u2014 Level B2",
+    "puzzles": [
+      "specimenCabinet"
+    ]
+  },
+  "server": {
+    "name": "Server Room \u2014 Level B2",
+    "puzzles": [
+      "terminal"
+    ]
+  },
+  "vault": {
+    "name": "Vault Zero \u2014 Classified Storage",
+    "puzzles": [
+      "briefcase"
+    ]
+  }
+}
