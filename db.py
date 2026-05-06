@@ -179,3 +179,16 @@ def get_leaderboard():
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def get_fresh_player(player_id: int) -> dict | None:
+    """Fetch the latest player row from DB — call this when returning to menu
+    so XP, escapes and level are always up to date without a logout."""
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            "SELECT * FROM players WHERE id=? AND is_active=1", (player_id,)
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()

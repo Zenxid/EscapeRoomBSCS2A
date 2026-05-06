@@ -18,6 +18,7 @@ class GameEngine:
         self.start_time = time.time()
         self.finished   = False
         self.escaped    = False
+        self.look_done  = set()   # rooms where player has typed 'look'
 
     # ── Helpers ────────────────────────────────────────────────────────────────
     @property
@@ -125,6 +126,7 @@ class GameEngine:
 
     def _look(self):
         r = self.room
+        self.look_done.add(self.room_id)   # unlock take/use in GUI
         lines = [
             ("gold",   f"── {r['name']} ──"),
             ("normal", r["look"]),
@@ -326,22 +328,102 @@ class GameEngine:
 
     # ── Quick actions for GUI buttons ──────────────────────────────────────────
     def get_gui_actions(self) -> list:
-        """Return list of {label, cmd, style} for the GUI action buttons."""
-        return self._get_quick_actions()
+        """
+        Return ALL available actions as GUI buttons — grouped by category.
+        Categories: explore, examine, take, use, unlock, navigate
+        This ensures GUI-only mode has full parity with CLI mode.
+        """
+        actions = []
+        r = self.room
+
+        # ── EXPLORE ────────────────────────────────────────────────────────────
+        actions.append({
+            "group": "explore",
+            "label": "Look around",
+            "cmd":   "look",
+            "style": "normal",
+            "icon":  "👁",
+        })
+
+        # ── EXAMINE — only revealed after player has looked around ────────────────
+        # Player needs to look first to know what objects exist in the room.
+        if self.room_id in self.look_done:
+            for obj_name in r["objects"].keys():
+                actions.append({
+                    "group": "examine",
+                    "label": f"Examine {obj_name}",
+                    "cmd":   f"examine {obj_name}",
+                    "style": "normal",
+                    "icon":  "🔍",
+                })
+
+        # ── TAKE + USE — only revealed after player has looked around ────────────
+        # Keeps GUI clean on room entry; "Look around" must be clicked first.
+        if self.room_id in self.look_done:
+            takeable_keys = {
+                "rope":  {"name": "Rope",            "key": "rope"},
+                "log":   {"name": "Maintenance Log", "key": "log"},
+                "flask": {"name": "Flask 7-ALPHA",   "key": "flask"},
+            }
+            for obj_name, item_info in takeable_keys.items():
+                if obj_name in r["objects"] and not self.has_item(item_info["key"]):
+                    actions.append({
+                        "group": "take",
+                        "label": f"Take {item_info['name']}",
+                        "cmd":   f"take {obj_name}",
+                        "style": "normal",
+                        "icon":  "✋",
+                    })
+
+            interactions = r.get("use_interactions", {})
+            for (item_key, obj_name) in interactions.keys():
+                if self.has_item(item_key):
+                    inv_item = next(
+                        (i for i in self.inventory if i["key"] == item_key), None)
+                    if inv_item:
+                        actions.append({
+                            "group": "use",
+                            "label": f"Use {inv_item['name']} on {obj_name}",
+                            "cmd":   f"use {item_key} on {obj_name}",
+                            "style": "normal",
+                            "icon":  "⚙",
+                        })
+
+        # ── UNLOCK — only revealed after player has looked around ─────────────────
+        if self.room_id in self.look_done:
+            puzzle_obj_map = {
+                "toolbox":         "toolbox",
+                "cabinet":         "filing cabinet",
+                "specimenCabinet": "specimen cabinet",
+                "terminal":        "terminal",
+                "briefcase":       "briefcase",
+            }
+            for pkey, puzzle in r["puzzles"].items():
+                if not self.puzzle_solved(pkey):
+                    obj_name = puzzle_obj_map.get(pkey, pkey)
+                    actions.append({
+                        "group": "unlock",
+                        "label": f"Unlock {obj_name}",
+                        "cmd":   f"open {obj_name}",
+                        "style": "warn",
+                        "icon":  "🔓",
+                    })
+
+        # ── NAVIGATE — proceed when room is clear ──────────────────────────────
+        if self.room_solved() and r.get("next_room"):
+            actions.append({
+                "group": "navigate",
+                "label": "Proceed to next room  ►",
+                "cmd":   "go n",
+                "style": "gold",
+                "icon":  "▶",
+            })
+
+        return actions
 
     def _get_quick_actions(self) -> list:
-        actions = [{"label": "Look around", "cmd": "look", "style": "normal"}]
-        for obj in list(self.room["objects"].keys())[:4]:
-            actions.append({"label": f"Examine {obj}", "cmd": f"examine {obj}", "style": "normal"})
-        for pkey, puzzle in self.room["puzzles"].items():
-            if not self.puzzle_solved(pkey):
-                obj_map = {"toolbox":"toolbox","cabinet":"cabinet","specimenCabinet":"specimen cabinet",
-                           "terminal":"terminal","briefcase":"briefcase"}
-                obj_name = obj_map.get(pkey, pkey)
-                actions.append({"label": f"Open {obj_name}", "cmd": f"open {obj_name}", "style": "warn"})
-        if self.room_solved() and self.room.get("next_room"):
-            actions.append({"label": "Proceed north ►", "cmd": "go n", "style": "gold"})
-        return actions
+        """Legacy shim for number-shortcut parsing."""
+        return self.get_gui_actions()
 
     # ── Internals ──────────────────────────────────────────────────────────────
     def _find_obj(self, target: str, collection: dict) -> str | None:

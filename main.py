@@ -15,13 +15,14 @@ GameScreen respects chosen mode:
 import sys, re, time
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QStackedWidget,
-    QVBoxLayout, QHBoxLayout, QSplitter,
+    QVBoxLayout, QHBoxLayout, QGridLayout, QSplitter,
     QLabel, QLineEdit, QPushButton, QTextEdit, QFrame,
-    QProgressBar, QSizePolicy,
+    QProgressBar, QSizePolicy, QScrollArea,
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui  import (
     QFont, QColor, QTextCharFormat, QTextCursor, QPalette,
+    QPainter, QPen, QBrush,
 )
 
 from db          import init_db, register, login, save_run, get_leaderboard, game_log
@@ -375,6 +376,7 @@ class PuzzleWidget(QFrame):
 # ═════════════════════════════════════════════════════════════════════════════
 # GAME SCREEN  (mode-aware: CLI | GUI | MIXED)
 # ═════════════════════════════════════════════════════════════════════════════
+# ROOM_ART kept for reference; GUI now uses RoomArtWidget (QPainter)
 ROOM_ART = {
     "storage": (
         "┌──────────────────────────────────────────┐\n"
@@ -419,6 +421,354 @@ ROOM_ART = {
     ),
 }
 
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# DYNAMIC ROOM ART WIDGET  (QPainter — redraws based on game state)
+# ═════════════════════════════════════════════════════════════════════════════
+class RoomArtWidget(QWidget):
+    """
+    Draws room art dynamically using QPainter.
+    Objects change appearance when examined/solved — state is pulled
+    from the GameEngine on every repaint.
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(120)
+        self._room_id  = "storage"
+        self._engine   = None   # set after build
+
+    def set_state(self, room_id: str, engine):
+        self._room_id = room_id
+        self._engine  = engine
+        self.update()
+
+    def paintEvent(self, _ev):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.fillRect(self.rect(), QColor(C["bg3"]))
+        draw = getattr(self, f"_draw_{self._room_id}", self._draw_default)
+        draw(p)
+        p.end()
+
+    def _col(self, key): return QColor(C.get(key, C["text2"]))
+
+    def _solved(self, puzzle_key):
+        if not self._engine: return False
+        return puzzle_key in self._engine.solved.get(self._room_id, [])
+
+    def _has(self, item_key):
+        if not self._engine: return False
+        return any(i["key"] == item_key for i in self._engine.inventory)
+
+    # ── Storage Room ───────────────────────────────────────────────────────────
+    def _draw_storage(self, p):
+        W, H = self.width(), self.height()
+        # Background floor/wall
+        p.setPen(QPen(self._col("border"), 1))
+        p.drawRect(10, 10, W-20, H-20)
+
+        # ── SHELVES (west wall) ────────────────────────────────────────────────
+        shelf_x, shelf_y, shelf_w, shelf_h = 20, 15, 55, H-25
+        p.fillRect(shelf_x, shelf_y, shelf_w, shelf_h, QColor(C["bg4"]))
+        p.setPen(QPen(self._col("border2"), 1))
+        p.drawRect(shelf_x, shelf_y, shelf_w, shelf_h)
+
+        # shelf dividers
+        for sy in [shelf_y + shelf_h//3, shelf_y + 2*shelf_h//3]:
+            p.drawLine(shelf_x, sy, shelf_x+shelf_w, sy)
+
+        # Rope (top shelf) — grey if taken
+        rope_col = self._col("dim") if self._has("rope") else self._col("teal")
+        p.setPen(QPen(rope_col, 2))
+        cx = shelf_x + 14
+        for i in range(3):
+            p.drawEllipse(cx + i*4, shelf_y+6, 8, 6)
+        p.setFont(QFont("Courier New", 7))
+        p.setPen(QPen(rope_col))
+        p.drawText(shelf_x+2, shelf_y+20, "ROPE")
+
+        # Toolbox (mid shelf) — gold if solved, else amber
+        tb_col = self._col("green") if self._solved("toolbox") else self._col("gold")
+        tb_y   = shelf_y + shelf_h//3 + 4
+        p.fillRect(shelf_x+8, tb_y, 38, 18, QColor(C["bg2"]))
+        p.setPen(QPen(tb_col, 1))
+        p.drawRect(shelf_x+8, tb_y, 38, 18)
+        p.setFont(QFont("Courier New", 6))
+        p.setPen(QPen(tb_col))
+        p.drawText(shelf_x+10, tb_y+8, "TOOLBOX")
+        status = "OPEN" if self._solved("toolbox") else "[148?]"
+        p.drawText(shelf_x+10, tb_y+16, status)
+
+        # Log (bottom shelf)
+        log_col = self._col("dim") if self._has("log") else self._col("text2")
+        log_y   = shelf_y + 2*shelf_h//3 + 4
+        p.setPen(QPen(log_col, 1))
+        p.setFont(QFont("Courier New", 7))
+        p.drawText(shelf_x+4, log_y+8, "LOG")
+        p.drawText(shelf_x+4, log_y+16, "scroll")
+
+        # ── WORKBENCH (centre) ────────────────────────────────────────────────
+        wb_x = shelf_x + shelf_w + 10
+        wb_w = (W - 20 - wb_x - 80) if W > 300 else 80
+        wb_y = H // 2
+        wb_h = H - wb_y - 15
+        p.fillRect(wb_x, wb_y, wb_w, wb_h, QColor(C["bg4"]))
+        p.setPen(QPen(self._col("border2"), 1))
+        p.drawRect(wb_x, wb_y, wb_w, wb_h)
+        p.setFont(QFont("Courier New", 7))
+        p.setPen(QPen(self._col("text3")))
+        p.drawText(wb_x + 4, wb_y + 11, "[ WORKBENCH ]")
+        p.drawText(wb_x + 4, wb_y + 21, "papers / diagram")
+        p.drawText(wb_x + 4, wb_y + 31, "sticky note")
+
+        # ── FILING CABINET (NE corner) ─────────────────────────────────────────
+        cab_x = W - 90
+        cab_solved = self._solved("cabinet")
+        cab_col = self._col("green") if cab_solved else self._col("red")
+        p.fillRect(cab_x, 15, 70, H-25, QColor(C["bg2"]))
+        p.setPen(QPen(cab_col, 1))
+        p.drawRect(cab_x, 15, 70, H-25)
+        # drawer lines
+        dh = (H-25) // 4
+        for di in range(1, 4):
+            p.drawLine(cab_x, 15+di*dh, cab_x+70, 15+di*dh)
+        # lock indicator
+        lock_label = "OPEN" if cab_solved else "top:LOCK"
+        p.setFont(QFont("Courier New", 7))
+        p.setPen(QPen(cab_col))
+        p.drawText(cab_x+4, 30, "[CABINET]")
+        p.drawText(cab_x+4, 42, lock_label)
+        # highlight top drawer
+        if not cab_solved:
+            p.fillRect(cab_x+2, 17, 66, dh-2, QColor(80, 30, 30, 60))
+
+        # ── GRATE (floor) ─────────────────────────────────────────────────────
+        gr_x = wb_x + wb_w//2 - 20
+        gr_y = H - 18
+        gr_col = self._col("dim") if self._solved("toolbox") else self._col("text3")
+        p.setPen(QPen(gr_col, 1))
+        p.drawRect(gr_x, gr_y, 40, 10)
+        for gx in range(gr_x+5, gr_x+40, 8):
+            p.drawLine(gx, gr_y, gx, gr_y+10)
+        p.setFont(QFont("Courier New", 6))
+        p.drawText(gr_x+2, gr_y+8, "GRATE")
+
+        # ── Room label ────────────────────────────────────────────────────────
+        p.setPen(QPen(self._col("text3")))
+        p.setFont(QFont("Courier New", 8))
+        p.drawText(W//2 - 50, H-4, "Storage Room — Level B2")
+
+    # ── Research Lab ──────────────────────────────────────────────────────────
+    def _draw_lab(self, p):
+        W, H = self.width(), self.height()
+        p.fillRect(self.rect(), QColor(C["bg3"]))
+        p.setPen(QPen(self._col("border"), 1))
+        p.drawRect(10, 10, W-20, H-20)
+        cab_solved = self._solved("specimenCabinet")
+
+        # Lab bench (west)
+        p.fillRect(18, 15, W//3, H-25, QColor(C["bg4"]))
+        p.setPen(QPen(self._col("border2"), 1))
+        p.drawRect(18, 15, W//3, H-25)
+        p.setFont(QFont("Courier New", 7))
+        p.setPen(QPen(self._col("text2")))
+        p.drawText(22, 28, "[ LAB BENCH ]")
+
+        # Beakers
+        for bi, (bnum, blab) in enumerate([(3,"3"),(9,"9"),(5,"5")]):
+            bx = 24 + bi*22
+            bc = self._col("teal") if bnum in [3,5] else self._col("text3")
+            p.setPen(QPen(bc, 1))
+            p.drawRect(bx, 35, 16, 22)
+            p.drawLine(bx+2, 35, bx+14, 35)
+            p.setFont(QFont("Courier New", 7))
+            p.drawText(bx+4, 48, blab)
+
+        # Flask
+        fk_col = self._col("green")
+        p.setPen(QPen(fk_col, 1))
+        p.setBrush(QBrush(QColor(30, 80, 40, 100)))
+        p.drawEllipse(22, 62, 18, 14)
+        p.setBrush(QBrush())
+        p.setFont(QFont("Courier New", 6))
+        p.setPen(QPen(fk_col))
+        p.drawText(22, 85, "7-ALPHA ✦")
+
+        # Whiteboard (centre)
+        wb_x = W//3 + 25
+        p.fillRect(wb_x, 18, 90, 55, QColor(20, 24, 22))
+        p.setPen(QPen(self._col("border2"), 1))
+        p.drawRect(wb_x, 18, 90, 55)
+        p.setFont(QFont("Courier New", 8))
+        p.setPen(QPen(self._col("text")))
+        p.drawText(wb_x+4, 32, "V = R × I")
+        p.setPen(QPen(self._col("amber")))
+        p.drawText(wb_x+4, 44, "R=4Ω  I=2A")
+        p.drawText(wb_x+4, 56, "V = 08 → ?")
+        p.setFont(QFont("Courier New", 6))
+        p.setPen(QPen(self._col("text3")))
+        p.drawText(wb_x+4, 68, "[WHITEBOARD]")
+
+        # Specimen cabinet (east)
+        sc_col = self._col("green") if cab_solved else self._col("amber")
+        sc_x = W - 95
+        p.fillRect(sc_x, 15, 75, H-25, QColor(C["bg2"]))
+        p.setPen(QPen(sc_col, 1))
+        p.drawRect(sc_x, 15, 75, H-25)
+        p.setFont(QFont("Courier New", 7))
+        p.setPen(QPen(sc_col))
+        p.drawText(sc_x+4, 28, "SPECIMEN CAB")
+        vial_colors = [C["red"], "#4a6ab0", C["green"], C["gold"], C["text"]]
+        vial_labels = ["R","B","G","Y","W"]
+        for vi in range(5):
+            vx = sc_x + 6 + vi*13
+            vy = 35
+            p.fillRect(vx, vy, 10, 20, QColor(vial_colors[vi]))
+            p.setPen(QPen(self._col("bg"), 1))
+            p.setFont(QFont("Courier New", 6))
+            p.drawText(vx+1, vy+13, vial_labels[vi])
+        lock_txt = "OPEN ✓" if cab_solved else "4-digit lock"
+        p.setPen(QPen(sc_col))
+        p.setFont(QFont("Courier New", 7))
+        p.drawText(sc_x+4, H-18, lock_txt)
+
+        # Server rack
+        sr_x = wb_x + 96
+        if sr_x + 60 < sc_x - 5:
+            p.fillRect(sr_x, 18, 52, 70, QColor(C["bg2"]))
+            p.setPen(QPen(self._col("border2"), 1))
+            p.drawRect(sr_x, 18, 52, 70)
+            led_colors = [C["green"], C["green"], C["red"], C["green"]]
+            for li, lc in enumerate(led_colors):
+                p.fillRect(sr_x+4, 24+li*14, 8, 8, QColor(lc))
+                p.setFont(QFont("Courier New", 6))
+                p.setPen(QPen(self._col("text3")))
+                p.drawText(sr_x+14, 31+li*14, ["α","β","γ","δ"][li])
+            p.setPen(QPen(self._col("text3")))
+            p.setFont(QFont("Courier New", 6))
+            p.drawText(sr_x+4, H-20, "RACK")
+
+        p.setPen(QPen(self._col("text3")))
+        p.setFont(QFont("Courier New", 8))
+        p.drawText(W//2-55, H-4, "Research Lab — Level B2")
+
+    # ── Server Room ───────────────────────────────────────────────────────────
+    def _draw_server(self, p):
+        W, H = self.width(), self.height()
+        p.fillRect(self.rect(), QColor(C["bg3"]))
+        p.setPen(QPen(self._col("border"), 1))
+        p.drawRect(10, 10, W-20, H-20)
+        term_solved = self._solved("terminal")
+
+        # Rack A
+        def draw_rack(rx, ry, rw, rh, leds, label):
+            p.fillRect(rx, ry, rw, rh, QColor(C["bg2"]))
+            p.setPen(QPen(self._col("border2"), 1))
+            p.drawRect(rx, ry, rw, rh)
+            row_h = rh // len(leds)
+            for ri, (on, lname) in enumerate(leds):
+                p.fillRect(rx+2, ry+2+ri*row_h, rw-4, row_h-3, QColor(C["bg3"]))
+                led_col = C["green"] if on else C["red"]
+                p.fillRect(rx+4, ry+5+ri*row_h, 8, 6, QColor(led_col))
+                p.setFont(QFont("Courier New", 6))
+                p.setPen(QPen(self._col("text2")))
+                p.drawText(rx+14, ry+12+ri*row_h, lname)
+            p.setFont(QFont("Courier New", 7))
+            p.setPen(QPen(self._col("text3")))
+            p.drawText(rx+4, ry+rh+10, label)
+
+        draw_rack(18, 15, 60, H-35,
+                  [(True,"ALPHA"),(True,"BETA"),(False,"GAMMA"),(True,"DELTA")],
+                  "RACK A  1101=13")
+        draw_rack(85, 15, 60, H-35,
+                  [(True,"ROW1"),(False,"ROW2"),(True,"ROW3"),(True,"ROW4")],
+                  "RACK B  1011=11")
+
+        # Terminal
+        tm_col = self._col("green") if term_solved else self._col("amber")
+        tm_x = W - 145
+        p.fillRect(tm_x, 15, 125, H-25, QColor(10, 14, 10))
+        p.setPen(QPen(tm_col, 1))
+        p.drawRect(tm_x, 15, 125, H-25)
+        p.setFont(QFont("Courier New", 7))
+        p.setPen(QPen(tm_col))
+        p.drawText(tm_x+4, 28, "ADMIN TERMINAL")
+        if term_solved:
+            p.setPen(QPen(self._col("green")))
+            p.drawText(tm_x+4, 42, "OVERRIDE: 24")
+            p.drawText(tm_x+4, 54, "VAULT CODE: 2941")
+            p.drawText(tm_x+4, 66, "ACCESS GRANTED ✓")
+        else:
+            p.setPen(QPen(self._col("text3")))
+            p.drawText(tm_x+4, 42, "LOGIN REQUIRED")
+            p.drawText(tm_x+4, 54, "pwd = RA + RB")
+            p.drawText(tm_x+4, 66, "13 + 11 = ???")
+            # blinking cursor
+            import time as _t
+            if int(_t.time()*2) % 2:
+                p.fillRect(tm_x+4, 72, 8, 10, QColor(C["amber"]))
+
+        p.setPen(QPen(self._col("text3")))
+        p.setFont(QFont("Courier New", 8))
+        p.drawText(W//2-55, H-4, "Server Room — Level B2")
+
+    # ── Vault ──────────────────────────────────────────────────────────────────
+    def _draw_vault(self, p):
+        W, H = self.width(), self.height()
+        p.fillRect(self.rect(), QColor(C["bg3"]))
+        p.setPen(QPen(self._col("border"), 1))
+        p.drawRect(10, 10, W-20, H-20)
+        brief_solved = self._solved("briefcase")
+
+        # Deposit boxes (walls)
+        box_col = self._col("border2")
+        p.setPen(QPen(box_col, 1))
+        for col in range(12):
+            for row in range(3):
+                bx = 18 + col*18
+                by = 15 + row*12
+                if bx + 16 < W - 10:
+                    p.fillRect(bx, by, 14, 10, QColor(C["bg4"]))
+                    p.drawRect(bx, by, 14, 10)
+
+        # Briefcase (centre table)
+        bc_col = self._col("green") if brief_solved else self._col("gold")
+        bfx = W//2 - 55; bfy = H//2 - 10
+        p.fillRect(bfx, bfy, 110, 40, QColor(C["bg2"]))
+        p.setPen(QPen(bc_col, 2))
+        p.drawRect(bfx, bfy, 110, 40)
+        p.setFont(QFont("Courier New", 7, QFont.Weight.Bold))
+        p.setPen(QPen(bc_col))
+        if brief_solved:
+            p.drawText(bfx+8, bfy+16, "VAULT ZERO — OPENED")
+            p.drawText(bfx+8, bfy+30, "PROJECT ECHO secured ✓")
+        else:
+            p.drawText(bfx+8, bfy+16, "STEEL BRIEFCASE")
+            # combination slots
+            for si in range(4):
+                sx = bfx+10+si*24
+                p.fillRect(sx, bfy+22, 18, 12, QColor(C["bg3"]))
+                p.setPen(QPen(bc_col, 1))
+                p.drawRect(sx, bfy+22, 18, 12)
+                p.setFont(QFont("Courier New", 7))
+                p.drawText(sx+5, bfy+32, "_")
+
+        # Cameras
+        for cx, cy in [(18, H-22), (W-30, H-22)]:
+            p.setPen(QPen(self._col("red"), 1))
+            p.drawEllipse(cx, cy, 10, 8)
+            p.fillRect(cx+2, cy+2, 6, 4, QColor(C["red"]))
+
+        p.setPen(QPen(self._col("text3")))
+        p.setFont(QFont("Courier New", 8))
+        p.drawText(W//2-45, H-4, "Vault Zero — Classified")
+
+    def _draw_default(self, p):
+        W, H = self.width(), self.height()
+        p.setPen(QPen(self._col("text3")))
+        p.setFont(QFont("Courier New", 10))
+        p.drawText(W//2-40, H//2, "[ ROOM ART ]")
 
 class GameScreen(QWidget):
     logout_requested = pyqtSignal()
@@ -547,9 +897,11 @@ class GameScreen(QWidget):
     # ── GUI panel ──────────────────────────────────────────────────────────────
     def _build_gui_panel(self):
         w = QWidget(); vl = QVBoxLayout(w); vl.setContentsMargins(0,0,0,0); vl.setSpacing(0)
-        hdr = QFrame(); hdr.setFixedHeight(28)
+
+        # Panel header — thin strip
+        hdr = QFrame(); hdr.setFixedHeight(26)
         hdr.setStyleSheet(f"background:{C['bg2']};border-bottom:1px solid {C['border']};")
-        hl = QHBoxLayout(hdr); hl.setContentsMargins(10,0,10,0)
+        hl = QHBoxLayout(hdr); hl.setContentsMargins(10,0,10,0); hl.setSpacing(8)
         dot = QLabel("●"); dot.setStyleSheet(f"color:#8a6a2a;font-size:8px;background:transparent;")
         lbl = QLabel("GUI — PyQt6 layer")
         lbl.setStyleSheet(f"color:{C['text3']};font-size:10px;letter-spacing:1px;background:transparent;")
@@ -559,47 +911,101 @@ class GameScreen(QWidget):
         hl.addWidget(self._db_lbl)
         vl.addWidget(hdr)
 
-        self._room_art = QLabel()
-        self._room_art.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._room_art.setFixedHeight(100)
-        self._room_art.setFont(QFont("Courier New", 10))
-        self._room_art.setStyleSheet(
-            f"background:{C['bg3']};color:{C['text2']};border-bottom:1px solid {C['border']};padding:6px;")
-        vl.addWidget(self._room_art)
+        # Room art — large, takes most of the panel height
+        self._room_art = RoomArtWidget()
+        self._room_art.setMinimumHeight(200)
+        vl.addWidget(self._room_art, 3)
 
+        # Room name — slim fixed bar, no wasted vertical space
+        name_bar = QFrame(); name_bar.setFixedHeight(28)
+        name_bar.setStyleSheet(
+            f"background:{C['bg3']};border-top:1px solid {C['border']};"
+            f"border-bottom:1px solid {C['border']};")
+        nl = QHBoxLayout(name_bar); nl.setContentsMargins(12,0,12,0)
         self._room_name = QLabel()
-        self._room_name.setFont(QFont("Georgia", 12, QFont.Weight.Bold))
-        self._room_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._room_name.setStyleSheet(
-            f"color:{C['gold']};background:{C['bg3']};padding:6px;border-bottom:1px solid {C['border']};")
-        vl.addWidget(self._room_name)
+        self._room_name.setFont(QFont("Georgia", 11, QFont.Weight.Bold))
+        self._room_name.setAlignment(
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+        self._room_name.setStyleSheet(f"color:{C['gold']};background:transparent;")
+        nl.addWidget(self._room_name)
+        vl.addWidget(name_bar)
 
-        self._room_desc = QTextEdit(); self._room_desc.setReadOnly(True)
+        # Room description — plain QLabel, word-wrapped, no scroll bar
+        self._room_desc = QLabel()
         self._room_desc.setFont(QFont("Georgia", 11))
+        self._room_desc.setWordWrap(True)
+        self._room_desc.setAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         self._room_desc.setStyleSheet(
-            f"background:{C['bg']};color:{C['text']};border:none;padding:10px 14px;")
-        self._room_desc.setMaximumHeight(95)
-        vl.addWidget(self._room_desc)
+            f"color:{C['text']};background:{C['bg']};padding:10px 14px;")
+        self._room_desc.setMinimumHeight(60)
+        vl.addWidget(self._room_desc, 1)
 
+        # GUI feedback — QLabel, word-wrapped, expands, no scroll
+        self._gui_narr = QLabel()
+        self._gui_narr.setFont(QFont("Courier New", 10))
+        self._gui_narr.setWordWrap(True)
+        self._gui_narr.setAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self._gui_narr.setStyleSheet(
+            f"color:{C['text2']};background:{C['bg2']};padding:8px 12px;"
+            f"border-top:1px solid {C['border']};")
+        self._gui_narr.setMinimumHeight(50)
+        vl.addWidget(self._gui_narr, 1)
+
+        # Puzzle area
         self._puzzle_area = QWidget()
-        self._puzzle_area.setStyleSheet(f"background:{C['bg3']};border-top:1px solid {C['border']};")
+        self._puzzle_area.setStyleSheet(
+            f"background:{C['bg3']};border-top:1px solid {C['border']};")
         self._puzzle_vl = QVBoxLayout(self._puzzle_area)
         self._puzzle_vl.setContentsMargins(0,0,0,0)
         self._puzzle_area.hide()
         vl.addWidget(self._puzzle_area)
 
-        acts_f = QFrame()
-        acts_f.setStyleSheet(f"background:{C['bg2']};border-top:1px solid {C['border']};")
-        self._acts_layout = QHBoxLayout(acts_f)
-        self._acts_layout.setContentsMargins(8,8,8,8); self._acts_layout.setSpacing(6)
-        vl.addWidget(acts_f)
+        # Action panel — scrollable, grouped, holds all GUI actions
+        acts_outer = QFrame()
+        acts_outer.setStyleSheet(
+            f"QFrame{{background:{C['bg2']};border-top:1px solid {C['border']};}}")
+        acts_outer.setFixedHeight(160)
+        ao_vl = QVBoxLayout(acts_outer); ao_vl.setContentsMargins(0,0,0,0); ao_vl.setSpacing(0)
 
-        inv_f = QFrame(); inv_f.setFixedHeight(36)
+        # Group label strip
+        self._acts_group_lbl = QLabel("  ACTIONS")
+        self._acts_group_lbl.setFixedHeight(20)
+        self._acts_group_lbl.setFont(QFont("Courier New", 9))
+        self._acts_group_lbl.setStyleSheet(
+            f"color:{C['text3']};background:{C['bg3']};"
+            f"padding-left:10px;border-bottom:1px solid {C['border']};")
+        ao_vl.addWidget(self._acts_group_lbl)
+
+        # Scroll area containing the button grid
+        self._acts_scroll = QScrollArea()
+        self._acts_scroll.setWidgetResizable(True)
+        self._acts_scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._acts_scroll.setStyleSheet(
+            f"QScrollArea{{background:{C['bg2']};border:none;}}"
+            f"QScrollBar:vertical{{background:{C['bg3']};width:5px;}}"
+            f"QScrollBar::handle:vertical{{background:{C['border2']};border-radius:2px;}}"
+            f"QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical{{height:0;}}")
+
+        self._acts_inner = QWidget()
+        self._acts_inner.setStyleSheet(f"background:{C['bg2']};")
+        self._acts_layout = QVBoxLayout(self._acts_inner)
+        self._acts_layout.setContentsMargins(6,4,6,4)
+        self._acts_layout.setSpacing(3)
+        self._acts_scroll.setWidget(self._acts_inner)
+        ao_vl.addWidget(self._acts_scroll)
+        vl.addWidget(acts_outer)
+
+        # Inventory bar
+        inv_f = QFrame(); inv_f.setFixedHeight(34)
         inv_f.setStyleSheet(f"background:{C['bg2']};border-top:1px solid {C['border']};")
         self._inv_layout = QHBoxLayout(inv_f)
         self._inv_layout.setContentsMargins(8,4,8,4); self._inv_layout.setSpacing(6)
         self._inv_empty = QLabel("inventory empty")
-        self._inv_empty.setStyleSheet(f"color:{C['text3']};font-size:10px;background:transparent;")
+        self._inv_empty.setStyleSheet(
+            f"color:{C['text3']};font-size:10px;background:transparent;")
         self._inv_layout.addWidget(self._inv_empty)
         vl.addWidget(inv_f)
         return w
@@ -618,10 +1024,53 @@ class GameScreen(QWidget):
             self._tmr.stop(); self._game_over("Time expired")
 
     def _game_over(self, reason):
+        self.engine.finished = True
         fire_event("game_over", self.engine.room_id, reason)
-        self._print([("red","TIME EXPIRED — VAULT LOCKDOWN"),("dim","You will be found.")])
         save_run(self.player["id"], self.engine.elapsed, False, self.engine.room_id)
+
+        # CLI output
+        self._print([
+            ("gold",  ""),
+            ("red",   "╔══════════════════════════════════════════╗"),
+            ("red",   "║       TIME EXPIRED — VAULT LOCKDOWN      ║"),
+            ("red",   "║          YOU HAVE BEEN FOUND.            ║"),
+            ("red",   "╚══════════════════════════════════════════╝"),
+            ("dim",   ""),
+            ("dim",   f"  Room reached : {self.engine.room['name']}"),
+            ("dim",   f"  Time elapsed : {self.engine.elapsed}s"),
+            ("dim",   "  Run saved to arena.db"),
+        ])
+
+        # HUD
         self._hud_timer.setText("FAILED")
+        self._hud_timer.setStyleSheet(f"color:{C['red']};font-weight:bold;background:transparent;")
+
+        # GUI narr overlay
+        if hasattr(self, "_gui_narr"):
+            self._gui_narr.setStyleSheet(
+                f"background:#2a0808;color:{C['red']};border:none;"
+                f"border-top:1px solid {C['red']};padding:8px 12px;")
+            self._gui_narr.setText(
+                "TIME EXPIRED — VAULT LOCKDOWN TRIGGERED\n\n"
+                "Security doors sealed. Cameras active.\n"
+                "You will be found.\n\n"
+                f"Room reached: {self.engine.room['name']}\n"
+                "Run saved to arena.db."
+            )
+        if hasattr(self, "_room_desc"):
+            self._room_desc.setStyleSheet(
+                f"background:#1a0808;color:{C['red']};border:none;padding:10px 14px;")
+            self._room_desc.setText(
+                "LOCKDOWN ACTIVE\nAll exits sealed. Security response imminent."
+            )
+        # Disable input
+        if hasattr(self, "_cli_inp"):
+            self._cli_inp.setEnabled(False)
+            self._cli_inp.setPlaceholderText("VAULT LOCKED — game over")
+        # Disable all action buttons in the scroll panel
+        if hasattr(self, "_acts_inner"):
+            for btn in self._acts_inner.findChildren(QPushButton):
+                btn.setEnabled(False)
 
     # ── Room ───────────────────────────────────────────────────────────────────
     def _enter_room(self):
@@ -630,10 +1079,12 @@ class GameScreen(QWidget):
 
         if hasattr(self, "_room_name"):
             self._room_name.setText(r["name"])
-            self._room_desc.setPlainText("\n".join(r["desc"]))
+            self._gui_narr_clear()   # fresh feedback on room enter
+            desc_text = "\n".join(r["desc"])
             if evt.get("flavour"):
-                self._room_desc.append(f"\n{evt['flavour']}")
-            self._room_art.setText(ROOM_ART.get(self.engine.room_id, ""))
+                desc_text += f"\n\n{evt['flavour']}"
+            self._room_desc.setText(desc_text)
+            self._room_art.set_state(self.engine.room_id, self.engine)
             db_txt = f"db: {r['db_indicator']}"
             if hasattr(self, "_db_lbl"):    self._db_lbl.setText(db_txt)
             self._bot_db.setText(db_txt)
@@ -668,13 +1119,47 @@ class GameScreen(QWidget):
         self._cli_out.setTextCursor(cur)
         self._cli_out.ensureCursorVisible()
 
-    def _println(self): self._print([("dim","")])
+    def _println(self): self._print([("dim", "")])
+
+    def _gui_print(self, lines):
+        """Mirror output lines to the GUI narrative QLabel (no scroll, no TextEdit)."""
+        if not hasattr(self, "_gui_narr"): return
+        # Collect visible lines, skip CLI-only noise
+        parts = []
+        for item in lines:
+            style, text = (item[0], item[1]) if len(item) == 2 else ("normal", str(item))
+            if not text.strip(): continue
+            if style == "dim" and (text.startswith("[db]") or text.startswith("[c]")
+                                   or text.startswith("Type") or text.startswith("──")):
+                continue
+            parts.append(text)
+        if not parts: return
+        # Append to existing text (keep last 6 lines to avoid label growing forever)
+        current = self._gui_narr.text()
+        all_lines = [l for l in current.split("\n") if l.strip()] + parts
+        self._gui_narr.setText("\n".join(all_lines[-6:]))
+
+    def _gui_narr_line(self, style: str, text: str):
+        """Push a single line to the GUI narrative label."""
+        self._gui_print([(style, text)])
+
+    def _gui_narr_clear(self):
+        """Clear the GUI narrative label."""
+        if hasattr(self, "_gui_narr"): self._gui_narr.setText("")
 
     # ── Result handler ─────────────────────────────────────────────────────────
     def _handle(self, result: dict):
         self._print(result["lines"])
+        # Push same feedback to GUI narr panel (so GUI button clicks show results)
+        if hasattr(self, "_gui_narr"):
+            self._gui_print(result["lines"])
         if result.get("state_changed"):
             self._refresh_inv(); self._refresh_hud()
+            # Repaint room art to reflect new state (item taken, puzzle solved etc.)
+            if hasattr(self, "_room_art"):
+                self._room_art.set_state(self.engine.room_id, self.engine)
+        # Always refresh actions — look_done flag may have changed (reveals take/use)
+        self._refresh_actions()
         if result.get("room_changed"):
             self._enter_room(); return
         if result.get("puzzle_key"):
@@ -687,11 +1172,15 @@ class GameScreen(QWidget):
                 self._print([("dim", f"[c]  puzzle_id={h}")])
             if evt.get("flavour"):
                 self._print([("dim", evt["flavour"])])
+                self._gui_narr_line("dim", evt["flavour"])
             self._hide_puzzle(); self._refresh_actions()
+            if hasattr(self, "_room_art"):
+                self._room_art.set_state(self.engine.room_id, self.engine)
         if result.get("wrong_code"):
             fire_event("puzzle_attempt", self.engine.room_id)
             if self._active_puzzle_widget:
                 self._active_puzzle_widget.set_wrong()
+            self._gui_narr_line("error", "✗  Wrong code — check your clues and try again.")
         if result.get("escaped"):
             self._on_escaped()
 
@@ -725,22 +1214,95 @@ class GameScreen(QWidget):
     # ── Action buttons ─────────────────────────────────────────────────────────
     def _refresh_actions(self):
         if not hasattr(self, "_acts_layout"): return
+
+        # Clear all existing items
         while self._acts_layout.count():
-            w = self._acts_layout.takeAt(0).widget()
-            if w: w.deleteLater()
+            item = self._acts_layout.takeAt(0)
+            w = item.widget()
+            if w:
+                w.deleteLater()
+
         actions = self.engine.get_gui_actions()
-        key_labels = ["A","B","C","D","E","F","G","H"]
-        col_colors = {"normal": C["text2"], "warn": C["amber"], "gold": C["gold"]}
-        col_borders = {"warn": C["amber"], "gold": C["gold2"]}
-        for i, act in enumerate(actions[:6]):
-            kl   = key_labels[i] if i < 8 else str(i)
-            col  = col_colors.get(act["style"], C["text2"])
-            bdr  = col_borders.get(act["style"], C["border2"])
-            btn  = _btn(f"[{kl}] {act['label']}", col, bdr, 10)
-            cmd  = act["cmd"]
-            btn.clicked.connect(lambda c=False, cm=cmd: self._gui_action(cm))
-            self._acts_layout.addWidget(btn)
+        if not actions:
+            return
+
+        # Group actions by their "group" field
+        groups = {}
+        for act in actions:
+            g = act.get("group", "other")
+            groups.setdefault(g, []).append(act)
+
+        GROUP_ORDER  = ["explore", "examine", "take", "use", "unlock", "navigate", "other"]
+        GROUP_LABELS = {
+            "explore":  "EXPLORE",
+            "examine":  "EXAMINE",
+            "take":     "TAKE",
+            "use":      "USE",
+            "unlock":   "UNLOCK",
+            "navigate": "PROCEED",
+            "other":    "OTHER",
+        }
+        GROUP_COLORS = {
+            "explore":  (C["text2"],  C["border2"]),
+            "examine":  (C["text2"],  C["border2"]),
+            "take":     (C["teal"],   C["teal"]),
+            "use":      (C["teal"],   C["teal"]),
+            "unlock":   (C["amber"],  C["amber"]),
+            "navigate": (C["gold"],   C["gold2"]),
+            "other":    (C["text2"],  C["border2"]),
+        }
+
+        for gname in GROUP_ORDER:
+            if gname not in groups:
+                continue
+            acts = groups[gname]
+
+            # Group header label
+            g_lbl = QLabel(f"  {GROUP_LABELS[gname]}")
+            g_lbl.setFixedHeight(18)
+            g_lbl.setFont(QFont("Courier New", 8))
+            g_lbl.setStyleSheet(
+                f"color:{C['text3']};background:{C['bg3']};"
+                f"border-top:1px solid {C['border']};padding-left:4px;")
+            self._acts_layout.addWidget(g_lbl)
+
+            # Button row (wrap into rows of 2)
+            btn_row = None
+            btn_col_idx = 0
+            COLS = 2
+            for act in acts:
+                if btn_col_idx % COLS == 0:
+                    row_w = QWidget()
+                    row_w.setStyleSheet("background:transparent;")
+                    btn_row = QHBoxLayout(row_w)
+                    btn_row.setContentsMargins(0,0,0,0)
+                    btn_row.setSpacing(4)
+                    self._acts_layout.addWidget(row_w)
+
+                col, bdr = GROUP_COLORS.get(gname, (C["text2"], C["border2"]))
+                icon  = act.get("icon", "")
+                label = f"{icon}  {act['label']}" if icon else act["label"]
+                btn   = _btn(label, col, bdr, 10)
+                btn.setSizePolicy(
+                    QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+                btn.setFixedHeight(26)
+                cmd = act["cmd"]
+                btn.clicked.connect(lambda c=False, cm=cmd: self._gui_action(cm))
+                btn_row.addWidget(btn)
+                btn_col_idx += 1
+
+            # Pad last row if odd number
+            if btn_col_idx % COLS != 0:
+                btn_row.addStretch()
+
         self._acts_layout.addStretch()
+
+        # Update group label strip with current room
+        if hasattr(self, "_acts_group_lbl"):
+            room_name = self.engine.room["name"]
+            n_actions = len(actions)
+            self._acts_group_lbl.setText(
+                f"  ACTIONS  ·  {room_name}  ·  {n_actions} available")
 
     def _gui_action(self, cmd: str):
         self._print([("dim","vault> "), ("gold", cmd)], nl=False); self._println()
@@ -829,6 +1391,12 @@ class MainWindow(QMainWindow):
         self._show_menu()
 
     def _show_menu(self):
+        # Always fetch fresh player data from DB before showing menu
+        # so XP, escapes and level reflect the latest completed run
+        from db import get_fresh_player
+        fresh = get_fresh_player(self._player["id"])
+        if fresh:
+            self._player = fresh
         if self._menu:
             self._stack.removeWidget(self._menu); self._menu.deleteLater()
         self._menu = MainMenu(self._player)
@@ -885,4 +1453,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main() 
