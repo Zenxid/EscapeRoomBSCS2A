@@ -167,27 +167,80 @@ class LeaderboardWidget(QFrame):
         vl.addLayout(self._rows_vl)
         self.load()
 
+    # Rank table mirrored here for LeaderboardWidget (no access to self of screen)
+    _RANKS = [
+        (0,    "Rookie",  "#8a7a65", "◈"),
+        (100,  "Agent",   "#4a8a4a", "◉"),
+        (300,  "Breaker", "#4a7ab0", "◆"),
+        (600,  "Ghost",   "#7a5ab0", "✦"),
+        (1000, "Phantom", "#d4a853", "★"),
+        (2000, "Wraith",  "#aa4a4a", "☿"),
+        (4000, "Specter", "#3a7a7a", "⬡"),
+        (7000, "Cipher",  "#d4a853", "⬟"),
+    ]
+
+    def _get_rank(self, xp):
+        rank = self._RANKS[0]
+        for entry in self._RANKS:
+            if xp >= entry[0]: rank = entry
+        return rank  # (min_xp, name, color, badge)
+
     def load(self):
         while self._rows_vl.count():
             w = self._rows_vl.takeAt(0).widget()
             if w: w.deleteLater()
         rows = get_leaderboard()
-        rank_col = [C["gold"], "#9a9a9a", "#9a6a3a"]
+        pos_col = [C["gold"], "#9a9a9a", "#9a6a3a"]
+        pos_medal = ["🥇", "🥈", "🥉"]
         if not rows:
             self._rows_vl.addWidget(
                 _lbl("No runs yet — be the first to escape.", C["text3"], 10)
             )
             return
         for i, row in enumerate(rows):
-            rc  = rank_col[i] if i < 3 else C["text2"]
-            rw  = QWidget(); rw.setStyleSheet("background:transparent;")
-            hl  = QHBoxLayout(rw); hl.setContentsMargins(0, 2, 0, 2)
-            hl.addWidget(_lbl(f"{i+1:2}.", rc, 10))
-            hl.addWidget(_lbl(row["username"], C["text"], 11))
+            pc   = pos_col[i] if i < 3 else C["text2"]
+            rank = self._get_rank(row["total_xp"])
+
+            rw = QWidget(); rw.setStyleSheet("background:transparent;")
+            hl = QHBoxLayout(rw); hl.setContentsMargins(0, 2, 0, 2); hl.setSpacing(4)
+
+            # Position medal or number
+            pos_lbl = QLabel(pos_medal[i] if i < 3 else f"#{i+1}")
+            pos_lbl.setFont(QFont("Courier New", 10))
+            pos_lbl.setFixedWidth(24)
+            pos_lbl.setStyleSheet(f"color:{pc};background:transparent;")
+            hl.addWidget(pos_lbl)
+
+            # Rank badge
+            badge_lbl = QLabel(rank[3])
+            badge_lbl.setFont(QFont("Courier New", 10))
+            badge_lbl.setFixedWidth(16)
+            badge_lbl.setStyleSheet(f"color:{rank[2]};background:transparent;")
+            hl.addWidget(badge_lbl)
+
+            # Username
+            name_lbl = QLabel(row["username"])
+            name_lbl.setFont(QFont("Courier New", 11, QFont.Weight.Bold))
+            name_lbl.setStyleSheet(f"color:{C['text']};background:transparent;")
+            hl.addWidget(name_lbl)
             hl.addStretch()
-            hl.addWidget(_lbl(f"LV{row['level']}",       C["text3"], 10))
-            hl.addWidget(_lbl(f"  {row['total_xp']} XP", C["amber"],  10))
-            hl.addWidget(_lbl(f"  {row['escapes']} esc", C["teal"],   10))
+
+            # Rank name + level
+            rank_lbl = QLabel(f"{rank[1]}")
+            rank_lbl.setFont(QFont("Courier New", 9))
+            rank_lbl.setStyleSheet(f"color:{rank[2]};background:transparent;")
+            hl.addWidget(rank_lbl)
+
+            lv_lbl = QLabel(f"  LV{row['level']}")
+            lv_lbl.setFont(QFont("Courier New", 9))
+            lv_lbl.setStyleSheet(f"color:{C['text3']};background:transparent;")
+            hl.addWidget(lv_lbl)
+
+            xp_lbl = QLabel(f"  {row['total_xp']}XP")
+            xp_lbl.setFont(QFont("Courier New", 9))
+            xp_lbl.setStyleSheet(f"color:{C['amber']};background:transparent;")
+            hl.addWidget(xp_lbl)
+
             self._rows_vl.addWidget(rw)
 
 
@@ -516,16 +569,20 @@ class MainMenuScreen(QWidget):
         ))
         vl.addWidget(_sep())
 
-        # Stat cards
+        # Stat cards row
         sr = QHBoxLayout(); sr.setSpacing(12)
+        current_rank, next_rank, xp_left, pct = self._rank_info()
         for lbl, val, col in [
             ("LEVEL",    str(self.player["level"]),    C["gold"]),
             ("TOTAL XP", str(self.player["total_xp"]), C["amber"]),
             ("ESCAPES",  str(self.player["escapes"]),  C["teal"]),
-            ("RANK",     self._rank(),                 C["green"]),
+            ("RANK",     f"{current_rank[3]} {current_rank[1]}", current_rank[2]),
         ]:
             sr.addWidget(StatCard(lbl, val, col))
         vl.addLayout(sr)
+
+        # Rank progress bar
+        vl.addWidget(_build_rank_progress(self.player, self))
 
         # Big play button
         play = QPushButton("[ PLAY VAULT ZERO ]")
@@ -543,34 +600,77 @@ class MainMenuScreen(QWidget):
         # Two-column: tips + leaderboard
         cols = QHBoxLayout(); cols.setSpacing(16)
 
-        # Left column: last session info + tips
+        # Left column: session info + rank ladder
         lf = QFrame()
         lf.setStyleSheet(
             f"QFrame{{background:{C['bg2']};border:1px solid {C['border2']};"
             f"border-radius:8px;}}"
         )
-        lvl = QVBoxLayout(lf); lvl.setContentsMargins(14, 12, 14, 12); lvl.setSpacing(7)
-        lvl.addWidget(_lbl("LAST SESSION", C["gold"], 10, bold=True))
+        lvl = QVBoxLayout(lf); lvl.setContentsMargins(14, 12, 14, 12); lvl.setSpacing(6)
+
+        # Session info
+        lvl.addWidget(_lbl("PLAYER INFO", C["gold"], 10, bold=True))
         lvl.addWidget(_sep())
         last = self.player.get("last_login") or "First login"
         for k, v in [
-            ("Last login", last),
             ("Username",   self.player["username"]),
+            ("Last login", str(last)[:19]),
             ("Level",      str(self.player["level"])),
             ("Total XP",   str(self.player["total_xp"])),
         ]:
             lvl.addWidget(_lbl(f"{k:<12}: {v}", C["text2"], 10))
+
+        # Rank ladder
+        lvl.addSpacing(6)
         lvl.addWidget(_sep())
-        lvl.addWidget(_lbl("QUICK COMMANDS", C["gold"], 10, bold=True))
-        for tip in [
-            "look           — survey the room",
-            "examine X      — inspect closely",
-            "open X         — attempt to unlock",
-            "use X on Y     — combine items",
-            "go n           — advance room",
-            "help           — full command list",
-        ]:
-            lvl.addWidget(_lbl(tip, C["text3"], 10))
+        lvl.addWidget(_lbl("RANK LADDER", C["gold"], 10, bold=True))
+        lvl.addWidget(_sep())
+        xp_now = self.player.get("total_xp", 0)
+        for min_xp, rname, rcol, rbadge in self.RANK_TABLE:
+            is_current = self._rank_name_for(xp_now) == rname
+            is_achieved = xp_now >= min_xp
+            is_next     = (not is_achieved and
+                           self._rank_name_for(xp_now) ==
+                           self.RANK_TABLE[max(0, self.RANK_TABLE.index(
+                               next(r for r in self.RANK_TABLE if r[1] == self._rank_name_for(xp_now))
+                           ) )][1])
+            row_w = QWidget(); row_w.setStyleSheet("background:transparent;")
+            rhl   = QHBoxLayout(row_w)
+            rhl.setContentsMargins(0, 1, 0, 1); rhl.setSpacing(6)
+
+            # Badge
+            badge_lbl = QLabel(rbadge)
+            badge_lbl.setFont(QFont("Courier New", 11))
+            badge_lbl.setFixedWidth(18)
+            badge_lbl.setStyleSheet(
+                f"color:{rcol if is_achieved else C['dim']};background:transparent;")
+            rhl.addWidget(badge_lbl)
+
+            # Rank name
+            name_lbl = QLabel(rname)
+            name_lbl.setFont(QFont("Courier New", 10,
+                QFont.Weight.Bold if is_current else QFont.Weight.Normal))
+            name_lbl.setStyleSheet(
+                f"color:{rcol if is_achieved else C['dim']};background:transparent;")
+            rhl.addWidget(name_lbl)
+            rhl.addStretch()
+
+            # XP threshold
+            xp_lbl = QLabel(f"{min_xp} XP")
+            xp_lbl.setFont(QFont("Courier New", 9))
+            xp_lbl.setStyleSheet(
+                f"color:{C['text3'] if not is_achieved else C['dim']};background:transparent;")
+            rhl.addWidget(xp_lbl)
+
+            # Current marker
+            if is_current:
+                cur_lbl = QLabel("◄ you")
+                cur_lbl.setFont(QFont("Courier New", 9))
+                cur_lbl.setStyleSheet(f"color:{rcol};background:transparent;")
+                rhl.addWidget(cur_lbl)
+
+            lvl.addWidget(row_w)
+
         lvl.addStretch()
         cols.addWidget(lf, 1)
         cols.addWidget(LeaderboardWidget(), 1)
@@ -595,13 +695,55 @@ class MainMenuScreen(QWidget):
         scroll.setWidget(inner)
         self._body_vl.addWidget(scroll)
 
+    # ── Rank system ────────────────────────────────────────────────────────────
+    RANK_TABLE = [
+        # (min_xp, name,       color,        badge)
+        (0,    "Rookie",    "#8a7a65",    "◈"),
+        (100,  "Agent",     "#4a8a4a",    "◉"),
+        (300,  "Breaker",   "#4a7ab0",    "◆"),
+        (600,  "Ghost",     "#7a5ab0",    "✦"),
+        (1000, "Phantom",   "#d4a853",    "★"),
+        (2000, "Wraith",    "#aa4a4a",    "☿"),
+        (4000, "Specter",   "#3a7a7a",    "⬡"),
+        (7000, "Cipher",    "#d4a853",    "⬟"),
+    ]
+
+    def _rank_info(self, xp=None):
+        """Return (current_rank, next_rank, xp_to_next, progress_pct) for given XP."""
+        xp = xp if xp is not None else self.player.get("total_xp", 0)
+        current = self.RANK_TABLE[0]
+        next_rank = None
+        for i, entry in enumerate(self.RANK_TABLE):
+            if xp >= entry[0]:
+                current = entry
+                next_rank = self.RANK_TABLE[i + 1] if i + 1 < len(self.RANK_TABLE) else None
+            else:
+                break
+        if next_rank:
+            span     = max(1, next_rank[0] - current[0])
+            earned   = xp - current[0]
+            pct      = min(100, int((earned / span) * 100))
+            xp_left  = next_rank[0] - xp
+        else:
+            pct     = 100
+            xp_left = 0
+        return current, next_rank, xp_left, pct
+
     def _rank(self):
-        xp = self.player.get("total_xp", 0)
-        if xp == 0:   return "Rookie"
-        if xp < 100:  return "Agent"
-        if xp < 300:  return "Breaker"
-        if xp < 600:  return "Ghost"
-        return "Phantom"
+        current, _, _, _ = self._rank_info()
+        return current[1]
+
+    def _rank_badge(self, xp=None):
+        current, _, _, _ = self._rank_info(xp)
+        return current[3]
+
+    def _rank_name_for(self, xp):
+        current, _, _, _ = self._rank_info(xp)
+        return current[1]
+
+    def _rank_color_for(self, xp):
+        current, _, _, _ = self._rank_info(xp)
+        return current[2]
 
     # ── Mode select ────────────────────────────────────────────────────────────
     def _show_mode_select(self):
@@ -635,46 +777,78 @@ class MainMenuScreen(QWidget):
         ))
         vl.addWidget(_sep())
 
+        _RANKS = [
+            (0,    "Rookie",  "#8a7a65", "◈"),
+            (100,  "Agent",   "#4a8a4a", "◉"),
+            (300,  "Breaker", "#4a7ab0", "◆"),
+            (600,  "Ghost",   "#7a5ab0", "✦"),
+            (1000, "Phantom", "#d4a853", "★"),
+            (2000, "Wraith",  "#aa4a4a", "☿"),
+            (4000, "Specter", "#3a7a7a", "⬡"),
+            (7000, "Cipher",  "#d4a853", "⬟"),
+        ]
+        def get_rank(xp):
+            r = _RANKS[0]
+            for entry in _RANKS:
+                if xp >= entry[0]: r = entry
+            return r
+
         rows = get_leaderboard()
         medals = ["🥇", "🥈", "🥉"]
-        rank_col = [C["gold"], "#9a9a9a", "#9a6a3a"]
+        pos_col = [C["gold"], "#9a9a9a", "#9a6a3a"]
         if not rows:
             vl.addWidget(_lbl(
                 "No runs yet. Be the first to escape.",
                 C["text3"], 12, align=Qt.AlignmentFlag.AlignCenter
             ))
         for i, row in enumerate(rows):
-            is_me = row["username"] == self.player["username"]
+            is_me  = row["username"] == self.player["username"]
+            rank   = get_rank(row["total_xp"])
+            pc     = pos_col[i] if i < 3 else C["text2"]
+
             rf = QFrame()
             rf.setStyleSheet(
                 f"QFrame{{background:{'#1e1808' if is_me else C['bg2']};"
-                f"border:1px solid {C['border2']};border-radius:6px;}}"
+                f"border:1px solid {rank[2] if is_me else C['border2']};"
+                f"border-radius:6px;}}"
             )
-            rl = QHBoxLayout(rf); rl.setContentsMargins(16, 10, 16, 10)
+            rl = QHBoxLayout(rf); rl.setContentsMargins(14, 10, 14, 10); rl.setSpacing(6)
 
-            rank_w = QLabel(medals[i] if i < 3 else f"#{i+1}")
-            rank_w.setFont(QFont("Courier New", 13))
-            rank_w.setFixedWidth(38)
-            rank_w.setStyleSheet(
-                f"color:{rank_col[i] if i<3 else C['text2']};background:transparent;"
-            )
-            name_w = QLabel(
-                row["username"] + ("  ← you" if is_me else "")
-            )
-            name_w.setFont(QFont("Courier New", 13, QFont.Weight.Bold))
+            # Position
+            pos_w = QLabel(medals[i] if i < 3 else f"#{i+1}")
+            pos_w.setFont(QFont("Courier New", 13))
+            pos_w.setFixedWidth(30)
+            pos_w.setStyleSheet(f"color:{pc};background:transparent;")
+            rl.addWidget(pos_w)
+
+            # Rank badge
+            badge_w = QLabel(rank[3])
+            badge_w.setFont(QFont("Courier New", 14))
+            badge_w.setFixedWidth(22)
+            badge_w.setStyleSheet(f"color:{rank[2]};background:transparent;")
+            rl.addWidget(badge_w)
+
+            # Name + you marker
+            name_w = QLabel(row["username"] + ("  ← you" if is_me else ""))
+            name_w.setFont(QFont("Courier New", 12, QFont.Weight.Bold))
             name_w.setStyleSheet(f"color:{C['text']};background:transparent;")
-            rl.addWidget(rank_w); rl.addWidget(name_w); rl.addStretch()
+            rl.addWidget(name_w); rl.addStretch()
 
+            # Rank name
+            rname_w = QLabel(rank[1])
+            rname_w.setFont(QFont("Courier New", 11))
+            rname_w.setStyleSheet(f"color:{rank[2]};background:transparent;")
+            rl.addWidget(rname_w)
+
+            # Level, XP, escapes
             for val, col in [
-                (f"LV {row['level']}",      C["text3"]),
-                (f"{row['total_xp']} XP",   C["amber"]),
-                (f"{row['escapes']} escapes", C["teal"]),
+                (f"  LV {row['level']}",        C["text3"]),
+                (f"  {row['total_xp']} XP",     C["amber"]),
+                (f"  {row['escapes']} escapes",  C["teal"]),
             ]:
                 sl = QLabel(val)
-                sl.setFont(QFont("Courier New", 11))
-                sl.setStyleSheet(
-                    f"color:{col};background:transparent;margin-left:18px;"
-                )
+                sl.setFont(QFont("Courier New", 10))
+                sl.setStyleSheet(f"color:{col};background:transparent;")
                 rl.addWidget(sl)
             vl.addWidget(rf)
 
@@ -750,3 +924,145 @@ class MainMenuScreen(QWidget):
 
 # Alias so main.py can do: from main_menu import MainMenu
 MainMenu = MainMenuScreen
+
+def _build_rank_progress(player: dict, screen) -> QFrame:
+    """
+    Builds a rank progress bar widget showing:
+    - Current rank badge + name
+    - XP progress bar toward next rank
+    - Next rank badge + name + XP needed
+    - Full rank ladder preview (all future ranks)
+    """
+    current, next_rank, xp_left, pct = screen._rank_info()
+    xp_now = player.get("total_xp", 0)
+
+    frame = QFrame()
+    frame.setStyleSheet(
+        f"QFrame{{background:{C['bg2']};border:1px solid {C['border2']};"
+        f"border-radius:8px;}}"
+    )
+    vl = QVBoxLayout(frame); vl.setContentsMargins(14, 12, 14, 12); vl.setSpacing(8)
+
+    # Header
+    vl.addWidget(_lbl("RANK PROGRESS", C["gold"], 10, bold=True))
+
+    # Current → Next rank row
+    top_row = QHBoxLayout(); top_row.setSpacing(8)
+
+    # Current rank
+    cur_box = QFrame()
+    cur_box.setStyleSheet(
+        f"QFrame{{background:{C['bg3']};border:1px solid {current[2]};"
+        f"border-radius:5px;}}"
+    )
+    cb = QVBoxLayout(cur_box); cb.setContentsMargins(10, 6, 10, 6); cb.setSpacing(2)
+    cb_badge = QLabel(current[3])
+    cb_badge.setFont(QFont("Courier New", 18))
+    cb_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    cb_badge.setStyleSheet(f"color:{current[2]};background:transparent;")
+    cb_name = QLabel(current[1])
+    cb_name.setFont(QFont("Courier New", 10, QFont.Weight.Bold))
+    cb_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    cb_name.setStyleSheet(f"color:{current[2]};background:transparent;")
+    cb_label = QLabel("CURRENT")
+    cb_label.setFont(QFont("Courier New", 8))
+    cb_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    cb_label.setStyleSheet(f"color:{C['text3']};background:transparent;")
+    cb.addWidget(cb_badge); cb.addWidget(cb_name); cb.addWidget(cb_label)
+    top_row.addWidget(cur_box)
+
+    # Progress bar + XP text
+    prog_col = QVBoxLayout(); prog_col.setSpacing(4)
+    prog_col.addStretch()
+
+    xp_text_row = QHBoxLayout()
+    xp_text_row.addWidget(_lbl(f"{xp_now} XP", current[2], 9))
+    xp_text_row.addStretch()
+    if next_rank:
+        xp_text_row.addWidget(_lbl(f"{next_rank[0]} XP", next_rank[2], 9))
+    prog_col.addLayout(xp_text_row)
+
+    bar_frame = QFrame()
+    bar_frame.setFixedHeight(10)
+    bar_frame.setStyleSheet(
+        f"QFrame{{background:{C['bg3']};border:1px solid {C['border']};"
+        f"border-radius:4px;}}"
+    )
+    bar_inner = QFrame(bar_frame)
+    bar_w = max(4, int((pct / 100) * 200))
+    bar_inner.setGeometry(0, 0, bar_w, 10)
+    bar_inner.setStyleSheet(
+        f"QFrame{{background:{current[2]};border-radius:4px;border:none;}}"
+    )
+    prog_col.addWidget(bar_frame)
+
+    if next_rank:
+        prog_col.addWidget(_lbl(
+            f"{xp_left} XP to {next_rank[1]}",
+            C["text3"], 9, align=Qt.AlignmentFlag.AlignCenter
+        ))
+    else:
+        prog_col.addWidget(_lbl(
+            "Maximum rank achieved", C["gold"], 9,
+            align=Qt.AlignmentFlag.AlignCenter
+        ))
+
+    prog_col.addStretch()
+    top_row.addLayout(prog_col, 1)
+
+    # Next rank box (or max rank)
+    if next_rank:
+        nxt_box = QFrame()
+        nxt_box.setStyleSheet(
+            f"QFrame{{background:{C['bg3']};border:1px solid {C['border2']};"
+            f"border-radius:5px;}}"
+        )
+        nb = QVBoxLayout(nxt_box); nb.setContentsMargins(10, 6, 10, 6); nb.setSpacing(2)
+        nb_badge = QLabel(next_rank[3])
+        nb_badge.setFont(QFont("Courier New", 18))
+        nb_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        nb_badge.setStyleSheet(f"color:{C['dim']};background:transparent;")
+        nb_name = QLabel(next_rank[1])
+        nb_name.setFont(QFont("Courier New", 10))
+        nb_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        nb_name.setStyleSheet(f"color:{C['dim']};background:transparent;")
+        nb_label = QLabel("NEXT")
+        nb_label.setFont(QFont("Courier New", 8))
+        nb_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        nb_label.setStyleSheet(f"color:{C['text3']};background:transparent;")
+        nb.addWidget(nb_badge); nb.addWidget(nb_name); nb.addWidget(nb_label)
+        top_row.addWidget(nxt_box)
+
+    vl.addLayout(top_row)
+
+    # Future ranks preview strip
+    future_ranks = [r for r in screen.RANK_TABLE if r[0] > xp_now]
+    if future_ranks:
+        vl.addWidget(_sep())
+        vl.addWidget(_lbl("UPCOMING RANKS", C["text3"], 9, bold=True))
+        strip = QHBoxLayout(); strip.setSpacing(6)
+        for fr in future_ranks[:5]:   # show up to 5 future ranks
+            fb = QFrame()
+            fb.setStyleSheet(
+                f"QFrame{{background:{C['bg3']};border:1px solid {C['border']};"
+                f"border-radius:4px;}}"
+            )
+            fb_vl = QVBoxLayout(fb); fb_vl.setContentsMargins(6, 4, 6, 4); fb_vl.setSpacing(1)
+            fb_badge = QLabel(fr[3])
+            fb_badge.setFont(QFont("Courier New", 12))
+            fb_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            fb_badge.setStyleSheet(f"color:{C['dim']};background:transparent;")
+            fb_name = QLabel(fr[1])
+            fb_name.setFont(QFont("Courier New", 8))
+            fb_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            fb_name.setStyleSheet(f"color:{C['dim']};background:transparent;")
+            fb_xp = QLabel(f"{fr[0]}XP")
+            fb_xp.setFont(QFont("Courier New", 7))
+            fb_xp.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            fb_xp.setStyleSheet(f"color:{C['text3']};background:transparent;")
+            fb_vl.addWidget(fb_badge); fb_vl.addWidget(fb_name); fb_vl.addWidget(fb_xp)
+            strip.addWidget(fb)
+        strip.addStretch()
+        vl.addLayout(strip)
+
+    return frame
