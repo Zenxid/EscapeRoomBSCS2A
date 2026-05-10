@@ -367,7 +367,7 @@ class ModeCard(QFrame):
 # MODE SELECT SCREEN
 # ─────────────────────────────────────────────────────────────────────────────
 class ModeSelectScreen(QWidget):
-    mode_chosen = pyqtSignal(str)   # "cli" | "gui" | "mixed" | "back"
+    mode_chosen = pyqtSignal(object)  # (mode, difficulty) tuple or "back" string
 
     def __init__(self, player):
         super().__init__()
@@ -424,6 +424,43 @@ class ModeSelectScreen(QWidget):
                   "[ C ] questhash.so not found — Python fallback active")
         bvl.addWidget(_lbl(c_txt, C["green"] if c_ok else C["amber"],
                            10, align=Qt.AlignmentFlag.AlignCenter))
+        bvl.addWidget(_sep())
+
+        # ── Difficulty selector ────────────────────────────────────────────────
+        bvl.addWidget(_lbl("SELECT DIFFICULTY", C["gold"], 11, bold=True,
+                           align=Qt.AlignmentFlag.AlignCenter))
+        self._difficulty = "normal"
+        self._diff_btns  = {}
+        diff_row = QHBoxLayout(); diff_row.setSpacing(8)
+        from game_data import DIFFICULTIES
+        for dkey, ddata in DIFFICULTIES.items():
+            db = QPushButton(f"{ddata['label']}")
+            db.setCheckable(True)
+            db.setFont(QFont("Courier New", 11))
+            db.setStyleSheet(
+                f"QPushButton{{background:transparent;color:{ddata['color']};"
+                f"border:1px solid {ddata['color']};border-radius:5px;padding:6px 10px;}}"
+                f"QPushButton:checked{{background:{C['bg4']};border-width:2px;}}"
+                f"QPushButton:hover{{background:{C['bg3']};}}"
+            )
+            db.clicked.connect(lambda c=False, k=dkey: self._select_diff(k))
+            diff_row.addWidget(db)
+            self._diff_btns[dkey] = db
+        bvl.addLayout(diff_row)
+
+        self._diff_desc = _lbl(
+            DIFFICULTIES["normal"]["desc"],
+            C["text2"], 10, align=Qt.AlignmentFlag.AlignCenter
+        )
+        bvl.addWidget(self._diff_desc)
+
+        # XP preview strip
+        self._xp_preview = _lbl(
+            "Escape XP: 400  ·  Per puzzle: 25  ·  Per room: 50  ·  Time: 15:00",
+            C["amber"], 10, align=Qt.AlignmentFlag.AlignCenter
+        )
+        bvl.addWidget(self._xp_preview)
+        bvl.addWidget(_sep())
 
         # Selection label
         self._sel_lbl = _lbl(
@@ -446,6 +483,7 @@ class ModeSelectScreen(QWidget):
         ))
         root.addWidget(body, 1)
         self._select("mixed")
+        self._select_diff("normal")
 
     def _select(self, key):
         self._mode = key
@@ -458,16 +496,31 @@ class ModeSelectScreen(QWidget):
         }
         self._sel_lbl.setText(f"Selected: {labels[key]}")
 
+    def _select_diff(self, key: str):
+        from game_data import DIFFICULTIES
+        self._difficulty = key
+        ddata = DIFFICULTIES[key]
+        for k, btn in self._diff_btns.items():
+            btn.setChecked(k == key)
+        self._diff_desc.setText(ddata["desc"])
+        mins, secs = divmod(ddata["time_limit"], 60)
+        self._xp_preview.setText(
+            f"Escape XP: {ddata['xp_escape']}  ·  "
+            f"Per puzzle: {ddata['xp_per_puzzle']}  ·  "
+            f"Per room: {ddata['xp_per_room']}  ·  "
+            f"Time: {mins:02d}:{secs:02d}"
+        )
+
     def _launch(self):
-        game_log(f"Mode selected: {self._mode} by {self.player['username']}")
-        self.mode_chosen.emit(self._mode)
+        game_log(f"Mode={self._mode} diff={self._difficulty} player={self.player['username']}")
+        self.mode_chosen.emit((self._mode, self._difficulty))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MAIN MENU / DASHBOARD
 # ─────────────────────────────────────────────────────────────────────────────
 class MainMenuScreen(QWidget):
-    play_requested   = pyqtSignal(str)   # mode key
+    play_requested   = pyqtSignal(object)  # (mode, difficulty) tuple
     logout_requested = pyqtSignal()
 
     def __init__(self, player):

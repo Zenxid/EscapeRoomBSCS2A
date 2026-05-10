@@ -156,7 +156,10 @@ def get_player_by_token(token: str):
 
 
 # ── Game runs ─────────────────────────────────────────────────────────────────
-def save_run(player_id: int, elapsed_s: int, escaped: bool, last_room: str):
+def save_run(player_id: int, elapsed_s: int, escaped: bool, last_room: str, difficulty: str = "normal"):
+    from game_data import DIFFICULTIES
+    diff = DIFFICULTIES.get(difficulty, DIFFICULTIES['normal'])
+    xp_gain = diff['xp_escape'] if escaped else max(10, elapsed_s // 30)
     conn = get_conn()
     conn.execute(
         """INSERT INTO game_runs (player_id,room,elapsed_s,escaped,ended_at)
@@ -164,13 +167,23 @@ def save_run(player_id: int, elapsed_s: int, escaped: bool, last_room: str):
         (player_id, last_room, elapsed_s, int(escaped))
     )
     if escaped:
+        new_level = max(2, player_id % 5 + 2)  # floor level calc
         conn.execute(
-            "UPDATE players SET escapes=escapes+1, total_xp=total_xp+?, level=MAX(level,?) WHERE id=?",
-            (100, 2, player_id)
+            """UPDATE players SET
+               escapes=escapes+1,
+               total_xp=total_xp+?,
+               level=MAX(level, CAST((total_xp+?) / 200 AS INTEGER)+1)
+               WHERE id=?""",
+            (xp_gain, xp_gain, player_id)
+        )
+    else:
+        conn.execute(
+            "UPDATE players SET total_xp=total_xp+? WHERE id=?",
+            (xp_gain, player_id)
         )
     conn.commit()
     conn.close()
-    game_log(f"RUN_SAVED: player={player_id} escaped={escaped} time={elapsed_s}s room={last_room}")
+    game_log(f"RUN_SAVED: player={player_id} escaped={escaped} diff={difficulty} xp={xp_gain} time={elapsed_s}s room={last_room}")
 
 def get_leaderboard():
     conn = get_conn()

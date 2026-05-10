@@ -317,24 +317,56 @@ class PuzzleWidget(QFrame):
     submitted  = pyqtSignal(str, str)  # puzzle_key, code
     cancelled  = pyqtSignal()
 
-    def __init__(self, puzzle_key: str, puzzle: dict):
+    def __init__(self, puzzle_key: str, puzzle: dict, difficulty: str = "normal"):
         super().__init__()
         self.puzzle_key = puzzle_key
         self.setStyleSheet(
             f"QFrame{{background:{C['bg3']};border:1px solid {C['border2']};border-radius:8px;}}")
         vl = QVBoxLayout(self); vl.setContentsMargins(14, 14, 14, 14); vl.setSpacing(8)
 
+        # Title row with difficulty badge
+        title_row = QHBoxLayout()
         title = QLabel(f"UNLOCK: {puzzle['label'].upper()}")
         title.setFont(QFont("Courier New", 11, QFont.Weight.Bold))
         title.setStyleSheet(f"color:{C['gold']};background:transparent;border:none;")
-        vl.addWidget(title)
+        title_row.addWidget(title)
+        title_row.addStretch()
+        from game_data import DIFFICULTIES
+        diff_data = DIFFICULTIES.get(difficulty, DIFFICULTIES["normal"])
+        diff_badge = QLabel(f"[ {diff_data['label']} ]")
+        diff_badge.setFont(QFont("Courier New", 9))
+        diff_badge.setStyleSheet(
+            f"color:{diff_data['color']};background:transparent;border:none;")
+        title_row.addWidget(diff_badge)
+        vl.addLayout(title_row)
 
-        hint = QTextEdit(); hint.setReadOnly(True)
-        hint.setFont(QFont("Courier New", 10))
-        hint.setPlainText(puzzle["hint"]); hint.setMaximumHeight(100)
-        hint.setStyleSheet(
-            f"background:{C['bg2']};color:{C['text2']};border:1px solid {C['border']};border-radius:4px;padding:6px;")
-        vl.addWidget(hint)
+        # Hint — respects difficulty level
+        from game_data import get_hint
+        hint_level = diff_data.get("hint_level", "partial")
+        hint_text  = get_hint(puzzle, hint_level)
+
+        hint_frame = QFrame()
+        hint_frame.setStyleSheet(
+            f"QFrame{{background:{C['bg2']};border:1px solid {C['border']};"
+            f"border-radius:4px;}}")
+        hfl = QVBoxLayout(hint_frame)
+        hfl.setContentsMargins(8, 6, 8, 6); hfl.setSpacing(0)
+
+        if hint_level == "none":
+            # Nightmare — show lock icon, no text
+            no_hint = QLabel("🔒  No hints on Nightmare mode.")
+            no_hint.setFont(QFont("Courier New", 10))
+            no_hint.setStyleSheet(
+                f"color:{diff_data['color']};background:transparent;")
+            no_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            hfl.addWidget(no_hint)
+        else:
+            hint_lbl = QLabel(hint_text)
+            hint_lbl.setFont(QFont("Courier New", 10))
+            hint_lbl.setWordWrap(True)
+            hint_lbl.setStyleSheet(f"color:{C['text2']};background:transparent;")
+            hfl.addWidget(hint_lbl)
+        vl.addWidget(hint_frame)
 
         self._inp = QLineEdit()
         self._inp.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -349,14 +381,17 @@ class PuzzleWidget(QFrame):
 
         self._status = QLabel("")
         self._status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._status.setStyleSheet(f"color:{C['red']};font-size:12px;background:transparent;border:none;")
+        self._status.setStyleSheet(
+            f"color:{C['red']};font-size:12px;background:transparent;border:none;")
         vl.addWidget(self._status)
 
         br = QHBoxLayout()
         cancel = _btn("Cancel", C["text3"], C["border"], 10)
         submit = _btn("[ SUBMIT ]", C["gold"], C["gold2"], 11)
-        cancel.clicked.connect(self.cancelled.emit); submit.clicked.connect(self._submit)
-        br.addWidget(cancel); br.addWidget(submit); vl.addLayout(br)
+        cancel.clicked.connect(self.cancelled.emit)
+        submit.clicked.connect(self._submit)
+        br.addWidget(cancel); br.addWidget(submit)
+        vl.addLayout(br)
         QTimer.singleShot(50, self._inp.setFocus)
 
     def _submit(self):
@@ -764,6 +799,93 @@ class RoomArtWidget(QWidget):
         p.setFont(QFont("Courier New", 8))
         p.drawText(W//2-45, H-4, "Vault Zero — Classified")
 
+    def _draw_reactor(self, p):
+        W, H = self.width(), self.height()
+        p.fillRect(self.rect(), QColor("#080c08"))
+        p.setPen(QPen(self._col("border"), 1))
+        p.drawRect(10, 10, W-20, H-20)
+
+        entry_solved  = self._solved("entryPanel")
+        coolant_solved= self._solved("coolantValve")
+        rods_solved   = self._solved("controlRods")
+        full_solved   = self._solved("meltdownOverride")
+
+        # Reactor cylinder (centre)
+        cx, cy, cr = W//2, H//2, min(W,H)//5
+        status_col = ("#4a8a4a" if full_solved else
+                      "#4a7ab0" if rods_solved else
+                      "#8a7a65" if coolant_solved else
+                      "#8a6a2a")
+        p.setPen(QPen(QColor(status_col), 2))
+        p.setBrush(QBrush(QColor(status_col).darker(300)))
+        p.drawEllipse(cx-cr, cy-cr, cr*2, cr*2)
+        p.setBrush(QBrush())
+        # Inner rings
+        for ri in range(1,4):
+            p.setPen(QPen(QColor(status_col), 1))
+            p.drawEllipse(cx-cr+ri*6, cy-cr+ri*6, (cr-ri*6)*2, (cr-ri*6)*2)
+
+        # Status text
+        p.setFont(QFont("Courier New", 7, QFont.Weight.Bold))
+        p.setPen(QPen(QColor(status_col)))
+        status_txt = ("SHUTDOWN" if full_solved else
+                      "STABLE"   if rods_solved  else
+                      "COOLANT"  if coolant_solved else
+                      "CRITICAL")
+        p.drawText(cx - 24, cy + 4, status_txt)
+        p.setFont(QFont("Courier New", 6))
+        p.setPen(QPen(self._col("text3")))
+        p.drawText(cx - 18, cy + 14, "412°C CORE")
+
+        # Warning lights (corners)
+        warn_col = ("#4a8a4a" if full_solved else "#d4a853" if coolant_solved else "#8a3a3a")
+        for lx, ly in [(18,18),(W-28,18),(18,H-28),(W-28,H-28)]:
+            p.fillRect(lx, ly, 10, 10, QColor(warn_col))
+            p.setPen(QPen(self._col("border2"),1))
+            p.drawRect(lx, ly, 10, 10)
+
+        # Steam pipes (left & right)
+        p.setPen(QPen(self._col("border2"), 3))
+        for px in [35, 45]:
+            p.drawLine(px, 20, px, H-20)
+        for px in [W-35, W-45]:
+            p.drawLine(px, 20, px, H-20)
+
+        # Control rod console (east, small)
+        rx = W-90; ry = H//2-25
+        p.fillRect(rx, ry, 70, 50, QColor(C["bg2"]))
+        p.setPen(QPen(self._col("border2"),1))
+        p.drawRect(rx, ry, 70, 50)
+        p.setFont(QFont("Courier New", 6))
+        p.setPen(QPen(self._col("text3")))
+        p.drawText(rx+4, ry+10, "CTRL RODS")
+        rod_col = self._col("green") if rods_solved else self._col("amber")
+        for ri in range(3):
+            val = ["4","6","2"][ri] if rods_solved else "?"
+            p.setPen(QPen(rod_col,1))
+            p.drawRect(rx+4+ri*20, ry+16, 16, 20)
+            p.setFont(QFont("Courier New",8,QFont.Weight.Bold))
+            p.drawText(rx+8+ri*20, ry+29, val)
+
+        # Coolant valve array (west, small)
+        vx, vy = 18, H//2-30
+        p.fillRect(vx, vy, 55, 60, QColor(C["bg2"]))
+        p.setPen(QPen(self._col("border2"),1))
+        p.drawRect(vx, vy, 55, 60)
+        p.setFont(QFont("Courier New",6))
+        p.setPen(QPen(self._col("text3")))
+        p.drawText(vx+4, vy+10, "COOLANT")
+        v_col = self._col("green") if coolant_solved else self._col("red")
+        for vi, (vname, vpres) in enumerate([("A","4.2"),("B","1.7"),("C","8.9"),("D","3.1")]):
+            p.setPen(QPen(v_col,1))
+            p.setFont(QFont("Courier New",6))
+            p.drawText(vx+4, vy+18+vi*10, f"{vname}:{vpres}")
+
+        # Room label
+        p.setPen(QPen(self._col("text3")))
+        p.setFont(QFont("Courier New", 8))
+        p.drawText(W//2-55, H-4, "Reactor Core — Level B3")
+
     def _draw_default(self, p):
         W, H = self.width(), self.height()
         p.setPen(QPen(self._col("text3")))
@@ -774,11 +896,12 @@ class GameScreen(QWidget):
     logout_requested = pyqtSignal()
     menu_requested   = pyqtSignal()
 
-    def __init__(self, player: dict, mode: str = "MIXED"):
+    def __init__(self, player: dict, mode: str = "mixed", difficulty: str = "normal"):
         super().__init__()
-        self.player = player
-        self.mode   = mode.upper()
-        self.engine = GameEngine(player)
+        self.player     = player
+        self.mode       = mode.upper()
+        self.difficulty = difficulty
+        self.engine     = GameEngine(player, difficulty)
         self._active_puzzle_key = None
         self._active_puzzle_widget = None
         self._build()
@@ -833,7 +956,9 @@ class GameScreen(QWidget):
             splitter.setStyleSheet(f"QSplitter::handle{{background:{C['border']};}}")
             splitter.addWidget(self._build_cli_panel())
             splitter.addWidget(self._build_gui_panel())
-            splitter.setSizes([580, 580])
+            splitter.setSizes([560, 560])
+            splitter.setStretchFactor(0, 1)
+            splitter.setStretchFactor(1, 1)
             cl.addWidget(splitter)
         elif show_cli:
             cl.addWidget(self._build_cli_panel())
@@ -998,15 +1123,38 @@ class GameScreen(QWidget):
         ao_vl.addWidget(self._acts_scroll)
         vl.addWidget(acts_outer)
 
-        # Inventory bar
+        # Inventory bar — scrollable, fixed height, never widens window
         inv_f = QFrame(); inv_f.setFixedHeight(34)
-        inv_f.setStyleSheet(f"background:{C['bg2']};border-top:1px solid {C['border']};")
-        self._inv_layout = QHBoxLayout(inv_f)
-        self._inv_layout.setContentsMargins(8,4,8,4); self._inv_layout.setSpacing(6)
-        self._inv_empty = QLabel("inventory empty")
-        self._inv_empty.setStyleSheet(
-            f"color:{C['text3']};font-size:10px;background:transparent;")
-        self._inv_layout.addWidget(self._inv_empty)
+        inv_f.setStyleSheet(
+            f"background:{C['bg2']};border-top:1px solid {C['border']};")
+
+        inv_outer = QHBoxLayout(inv_f)
+        inv_outer.setContentsMargins(4,2,4,2); inv_outer.setSpacing(0)
+
+        # Scroll area so items wrap horizontally without widening the frame
+        self._inv_scroll = QScrollArea()
+        self._inv_scroll.setWidgetResizable(True)
+        self._inv_scroll.setFixedHeight(30)
+        self._inv_scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self._inv_scroll.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._inv_scroll.setStyleSheet(
+            f"QScrollArea{{background:transparent;border:none;}}"
+            f"QScrollBar:horizontal{{background:{C['bg3']};height:4px;}}"
+            f"QScrollBar::handle:horizontal{{background:{C['border2']};border-radius:2px;}}"
+            f"QScrollBar::add-line:horizontal,QScrollBar::sub-line:horizontal{{width:0;}}")
+
+        self._inv_inner = QWidget()
+        self._inv_inner.setStyleSheet("background:transparent;")
+        self._inv_layout = QHBoxLayout(self._inv_inner)
+        self._inv_layout.setContentsMargins(4,0,4,0)
+        self._inv_layout.setSpacing(5)
+        self._inv_layout.setAlignment(Qt.AlignmentFlag.AlignLeft |
+                                       Qt.AlignmentFlag.AlignVCenter)
+
+        self._inv_scroll.setWidget(self._inv_inner)
+        inv_outer.addWidget(self._inv_scroll)
         vl.addWidget(inv_f)
         return w
 
@@ -1026,7 +1174,7 @@ class GameScreen(QWidget):
     def _game_over(self, reason):
         self.engine.finished = True
         fire_event("game_over", self.engine.room_id, reason)
-        save_run(self.player["id"], self.engine.elapsed, False, self.engine.room_id)
+        save_run(self.player["id"], self.engine.elapsed, False, self.engine.room_id, self.difficulty)
 
         # CLI output
         self._print([
@@ -1077,6 +1225,17 @@ class GameScreen(QWidget):
         r   = self.engine.room
         evt = fire_event("room_enter", self.engine.room_id)
 
+        # Start reactor meltdown timer when entering reactor
+        if self.engine.room_id == "reactor" and not hasattr(self, "_meltdown_tmr"):
+            self._start_meltdown_timer()
+            self._print([
+                ("warn", ""),
+                ("warn", "☢  WARNING — REACTOR MELTDOWN COUNTDOWN STARTED"),
+                ("warn", "☢  8 MINUTES TO CATASTROPHIC FAILURE"),
+                ("warn", "☢  Solve all reactor puzzles before time runs out"),
+                ("warn", ""),
+            ])
+
         if hasattr(self, "_room_name"):
             self._room_name.setText(r["name"])
             self._gui_narr_clear()   # fresh feedback on room enter
@@ -1103,6 +1262,10 @@ class GameScreen(QWidget):
         self._cli_inp.clear()
         self._print([("dim", f"vault> "), ("gold", raw)], nl=False)
         self._println()
+        # Handle special post-game commands
+        if raw.lower() in ("menu", "quit", "exit", "return", "back"):
+            self.menu_requested.emit()
+            return
         result = self.engine.parse(raw)
         self._handle(result)
 
@@ -1192,7 +1355,7 @@ class GameScreen(QWidget):
         while self._puzzle_vl.count():
             w = self._puzzle_vl.takeAt(0).widget()
             if w: w.deleteLater()
-        pw = PuzzleWidget(pkey, puzzle)
+        pw = PuzzleWidget(pkey, puzzle, self.difficulty)
         pw.submitted.connect(self._gui_submit)
         pw.cancelled.connect(self._hide_puzzle)
         self._active_puzzle_widget = pw
@@ -1312,48 +1475,210 @@ class GameScreen(QWidget):
     # ── Inventory ──────────────────────────────────────────────────────────────
     def _refresh_inv(self):
         if not hasattr(self, "_inv_layout"): return
+        # Remove all existing widgets
         while self._inv_layout.count():
-            w = self._inv_layout.takeAt(0).widget()
+            item = self._inv_layout.takeAt(0)
+            w = item.widget()
             if w: w.deleteLater()
+
         if not self.engine.inventory:
             e = QLabel("inventory empty")
-            e.setStyleSheet(f"color:{C['text3']};font-size:10px;background:transparent;")
-            self._inv_layout.addWidget(e); return
-        type_colors = {"key":C["gold"],"item":C["green"],"clue":C["teal"],"weapon":C["red"]}
+            e.setFont(QFont("Courier New", 9))
+            e.setStyleSheet(
+                f"color:{C['text3']};background:transparent;")
+            self._inv_layout.addWidget(e)
+            return
+
+        type_colors = {
+            "key":    C["gold"],
+            "item":   C["green"],
+            "clue":   C["teal"],
+            "weapon": C["red"],
+        }
+        type_icons = {
+            "key":    "🔑",
+            "item":   "⚙",
+            "clue":   "📋",
+            "weapon": "⚔",
+        }
         for item in self.engine.inventory:
-            tag = QLabel(item["name"]); tag.setFont(QFont("Courier New", 10))
-            col = type_colors.get(item["type"], C["text2"])
+            col  = type_colors.get(item["type"], C["text2"])
+            icon = type_icons.get(item["type"],  "·")
+            # Truncate long names to keep tags compact
+            name = item["name"]
+            if len(name) > 18:
+                name = name[:16] + "…"
+            tag = QLabel(f"{icon} {name}")
+            tag.setFont(QFont("Courier New", 9))
+            tag.setFixedHeight(22)
+            tag.setSizePolicy(
+                QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
             tag.setStyleSheet(
-                f"color:{col};background:{C['bg3']};border:1px solid {C['border2']};"
-                f"border-radius:3px;padding:1px 7px;")
+                f"color:{col};background:{C['bg3']};"
+                f"border:1px solid {C['border2']};border-radius:3px;"
+                f"padding:0px 6px;")
             self._inv_layout.addWidget(tag)
-        self._inv_layout.addStretch()
 
     # ── HUD ────────────────────────────────────────────────────────────────────
     def _refresh_hud(self):
-        rooms = ["storage","lab","server","vault"]
-        idx   = rooms.index(self.engine.room_id) + 1
-        solved = sum(1 for rid in rooms
-                     if all(p in self.engine.solved[rid] for p in ROOMS[rid]["solve_condition"]))
-        self._hud_room.setText(f"ROOM {idx}/4")
-        self._hud_solved.setText(f"SOLVED {solved}/4")
+        from game_data import ROOM_ORDER
+        rooms = ROOM_ORDER   # ["storage","lab","server","vault","reactor"]
+        idx   = (rooms.index(self.engine.room_id) + 1
+                 if self.engine.room_id in rooms else 1)
+        total_rooms   = len(rooms)
+        total_puzzles = self.engine.total_puzzles
+        solved_puzzles= self.engine.total_puzzles_solved
+        self._hud_room.setText(f"ROOM {idx}/{total_rooms}")
+        self._hud_solved.setText(f"PUZZLES {solved_puzzles}/{total_puzzles}")
         self._hud_inv.setText(f"ITEMS {len(self.engine.inventory)}")
 
     # ── Escaped ────────────────────────────────────────────────────────────────
     def _on_escaped(self):
         self._tmr.stop()
         fire_event("escape", self.engine.room_id)
-        tok = run_token(self.player["username"], self.engine.elapsed)
-        save_run(self.player["id"], self.engine.elapsed, True, self.engine.room_id)
-        self._hud_timer.setText("ESCAPED")
-        self._hud_timer.setStyleSheet(f"color:{C['green']};background:transparent;")
-        game_log(f"ESCAPED: {self.player['username']} time={self.engine.elapsed}s token={tok}")
+        tok     = run_token(self.player["username"], self.engine.elapsed)
+        is_full = self.engine.room_id == "reactor"
+        save_run(self.player["id"], self.engine.elapsed, True,
+                 self.engine.room_id, self.difficulty)
+        game_log(f"ESCAPED: {self.player['username']} full={is_full} "
+                 f"time={self.engine.elapsed}s token={tok}")
+
+        mins, secs = divmod(self.engine.elapsed, 60)
+        time_str   = f"{mins:02d}:{secs:02d}"
+
+        # ── CLI victory banner ────────────────────────────────────────────────
+        if is_full:
+            self._print([
+                ("gold", ""),
+                ("gold", "╔══════════════════════════════════════════════╗"),
+                ("gold", "║   ★  VAULT ZERO — FULL COMPLETION  ★        ║"),
+                ("gold", "║      Reactor secured. Facility saved.        ║"),
+                ("gold", "╚══════════════════════════════════════════════╝"),
+            ])
+        else:
+            self._print([
+                ("gold", ""),
+                ("gold", "╔══════════════════════════════════════════════╗"),
+                ("gold", "║         VAULT ZERO — ESCAPED                ║"),
+                ("gold", "╚══════════════════════════════════════════════╝"),
+            ])
+        self._print([
+            ("gold",   f"  Time      : {time_str}"),
+            ("gold",   f"  Difficulty: {self.engine.diff_cfg['label']}"),
+            ("gold",   f"  Puzzles   : {self.engine.total_puzzles_solved}/{self.engine.total_puzzles}"),
+            ("dim",    f"  Run token : {tok}"),
+            ("dim",    ""),
+            ("gold",   "─── LEADERBOARD ─────────────────────────────────"),
+        ])
         lb = get_leaderboard()
-        self._print([("gold",""), ("gold","─── LEADERBOARD ──────────────────────────────")])
         for i, row in enumerate(lb, 1):
-            self._print([("normal", f"  {i:2}. {row['username']:<20} LV{row['level']}  {row['total_xp']} XP")])
-        self._print([("gold","─────────────────────────────────────────────"),
-                     ("dim", f"  run token (C): {tok}")])
+            self._print([("normal",
+                f"  {i:2}. {row['username']:<18} LV{row['level']}  {row['total_xp']} XP")])
+        self._print([("gold", "─────────────────────────────────────────────────")])
+
+        # ── HUD ───────────────────────────────────────────────────────────────
+        self._hud_timer.setText("ESCAPED" if not is_full else "★ COMPLETE")
+        self._hud_timer.setStyleSheet(
+            f"color:{C['green']};font-weight:bold;background:transparent;")
+
+        # ── GUI victory overlay ───────────────────────────────────────────────
+        if hasattr(self, "_room_desc"):
+            self._room_desc.setStyleSheet(
+                f"color:{C['gold']};background:#0e1808;padding:10px 14px;")
+            desc = ("★ FULL COMPLETION — Reactor shutdown. Facility saved.\n\n"
+                    if is_full else
+                    "ESCAPED VAULT ZERO\n\n")
+            desc += (f"Time: {time_str}  ·  "
+                     f"Difficulty: {self.engine.diff_cfg['label']}  ·  "
+                     f"Puzzles: {self.engine.total_puzzles_solved}/{self.engine.total_puzzles}")
+            self._room_desc.setText(desc)
+
+        if hasattr(self, "_gui_narr"):
+            self._gui_narr.setStyleSheet(
+                f"color:{C['green']};background:#0a1a0a;padding:8px 12px;"
+                f"border-top:1px solid {C['green']};")
+            self._gui_narr.setText(
+                "Run saved to arena.db  ·  Leaderboard updated")
+
+        # ── Disable CLI input ─────────────────────────────────────────────────
+        if hasattr(self, "_cli_inp"):
+            self._cli_inp.setEnabled(False)
+            self._cli_inp.setPlaceholderText("Escape complete — use the buttons below")
+
+        # ── FINISH / PLAY AGAIN buttons in action area ────────────────────────
+        if hasattr(self, "_acts_layout"):
+            # clear existing buttons
+            while self._acts_layout.count():
+                item = self._acts_layout.takeAt(0)
+                w = item.widget()
+                if w: w.deleteLater()
+
+            btn_row = QWidget(); btn_row.setStyleSheet("background:transparent;")
+            bhl = QHBoxLayout(btn_row)
+            bhl.setContentsMargins(8, 8, 8, 8); bhl.setSpacing(10)
+
+            finish_btn = _btn("[ RETURN TO MENU ]", C["gold"], C["gold2"], 12)
+            finish_btn.setFixedHeight(36)
+            finish_btn.clicked.connect(self.menu_requested.emit)
+
+            again_btn = _btn("[ PLAY AGAIN ]", C["green"], C["green"], 12)
+            again_btn.setFixedHeight(36)
+            again_btn.clicked.connect(self.menu_requested.emit)
+
+            bhl.addWidget(finish_btn)
+            bhl.addWidget(again_btn)
+            self._acts_layout.addWidget(btn_row)
+            # Also show finish button in CLI panel if mixed/cli mode
+            self._print([
+                ("dim",  ""),
+                ("gold", "  [ Click RETURN TO MENU or type 'menu' to continue ]"),
+            ])
+
+    # ── Reactor meltdown secondary countdown ───────────────────────────────────
+    def _start_meltdown_timer(self):
+        """
+        Called when entering the reactor room.
+        Starts an 8-minute secondary countdown displayed as a separate
+        MELTDOWN label. If it hits zero the reactor explodes — game over.
+        """
+        self._meltdown_secs = 480   # 8 minutes
+        self._meltdown_lbl  = None
+
+        # Find or create a meltdown label in the HUD area
+        if hasattr(self, "_hud_timer"):
+            # Insert meltdown indicator after the main timer in top bar
+            pass   # we update _hud_timer text to show both
+
+        self._meltdown_tmr = QTimer(self)
+        self._meltdown_tmr.timeout.connect(self._meltdown_tick)
+        self._meltdown_tmr.start(1000)
+
+    def _meltdown_tick(self):
+        if self.engine.finished or self.engine.room_id != "reactor":
+            if hasattr(self, "_meltdown_tmr"):
+                self._meltdown_tmr.stop()
+            return
+        self._meltdown_secs -= 1
+        m, s = divmod(self._meltdown_secs, 60)
+
+        # Override the HUD timer to show meltdown countdown in red/amber
+        col = C["red"] if self._meltdown_secs <= 60 else C["amber"]
+        self._hud_timer.setText(f"☢ {m:02d}:{s:02d}")
+        self._hud_timer.setStyleSheet(f"color:{col};font-weight:bold;background:transparent;")
+
+        # Flash GUI narr as warning
+        if self._meltdown_secs % 30 == 0 and self._meltdown_secs > 0:
+            mins_left = self._meltdown_secs // 60
+            self._gui_narr_line(
+                "warn" if self._meltdown_secs > 60 else "error",
+                f"☢  MELTDOWN IN {mins_left}m {self._meltdown_secs % 60:02d}s — SOLVE PUZZLES NOW"
+            )
+            self._print([("warn" if self._meltdown_secs > 60 else "error",
+                          f"☢  MELTDOWN COUNTDOWN: {m:02d}:{s:02d} remaining")])
+
+        if self._meltdown_secs <= 0:
+            self._meltdown_tmr.stop()
+            self._game_over("Reactor meltdown — facility destroyed")
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -1363,7 +1688,24 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Vault Zero")
-        self.resize(1280, 760)
+
+        # Detect screen resolution and cap window size
+        screen = QApplication.primaryScreen()
+        if screen:
+            sg   = screen.availableGeometry()
+            sw, sh = sg.width(), sg.height()
+            # 720p → 1260×700  |  1080p → 1280×760  |  larger → 1280×800
+            if sh <= 768:
+                w, h = min(1260, int(sw * 0.95)), min(700, int(sh * 0.92))
+            elif sh <= 1080:
+                w, h = min(1280, int(sw * 0.90)), min(760, int(sh * 0.88))
+            else:
+                w, h = min(1440, int(sw * 0.85)), min(860, int(sh * 0.85))
+            self.setMaximumSize(int(sw * 0.98), int(sh * 0.96))
+        else:
+            w, h = 1280, 760
+
+        self.resize(w, h)
         self.setStyleSheet(BASE_STYLE)
         self._player = None
         self._game   = None
@@ -1405,10 +1747,15 @@ class MainWindow(QMainWindow):
         self._stack.addWidget(self._menu)
         self._stack.setCurrentWidget(self._menu)
 
-    def _launch_game(self, mode: str):
+    def _launch_game(self, payload):
+        # payload is either a mode string (legacy) or (mode, difficulty) tuple
+        if isinstance(payload, tuple):
+            mode, difficulty = payload
+        else:
+            mode, difficulty = payload, "normal"
         if self._game:
             self._stack.removeWidget(self._game); self._game.deleteLater()
-        self._game = GameScreen(self._player, mode)
+        self._game = GameScreen(self._player, mode, difficulty)
         self._game.logout_requested.connect(self._on_logout)
         self._game.menu_requested.connect(self._show_menu)
         self._stack.addWidget(self._game)
@@ -1453,4 +1800,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()

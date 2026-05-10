@@ -5,20 +5,22 @@ No GUI code here — driven by CLI commands OR GUI button calls.
 Both interfaces call the same engine methods and get the same state back.
 """
 import time
-from game_data import ROOMS, ROOM_ORDER
+from game_data import ROOMS, ROOM_ORDER, get_difficulty, get_hint
 
 
 class GameEngine:
-    def __init__(self, player: dict):
+    def __init__(self, player: dict, difficulty: str = "normal"):
         self.player     = player
+        self.difficulty = difficulty
+        self.diff_cfg   = get_difficulty(difficulty)
         self.room_id    = "storage"
-        self.inventory  = []          # [{"name":..,"type":..,"key":..}]
-        self.clues      = []          # list of strings
-        self.solved     = {rid: [] for rid in ROOMS}  # {room_id: [puzzle_keys]}
+        self.inventory  = []
+        self.clues      = []
+        self.solved     = {rid: [] for rid in ROOMS}
+        self.look_done  = set()
         self.start_time = time.time()
         self.finished   = False
         self.escaped    = False
-        self.look_done  = set()   # rooms where player has typed 'look'
 
     # ── Helpers ────────────────────────────────────────────────────────────────
     @property
@@ -31,7 +33,7 @@ class GameEngine:
 
     @property
     def remaining(self) -> int:
-        return max(0, 900 - self.elapsed)
+        return max(0, self.diff_cfg["time_limit"] - self.elapsed)
 
     def has_item(self, key: str) -> bool:
         return any(i["key"] == key for i in self.inventory)
@@ -42,6 +44,21 @@ class GameEngine:
 
     def room_solved(self) -> bool:
         return all(p in self.solved[self.room_id] for p in self.room["solve_condition"])
+
+    @property
+    def total_puzzles_solved(self) -> int:
+        return sum(len(v) for v in self.solved.values())
+
+    @property
+    def total_puzzles(self) -> int:
+        return sum(len(r["puzzles"]) for r in ROOMS.values())
+
+    @property
+    def rooms_completed(self) -> int:
+        return sum(
+            1 for rid, r in ROOMS.items()
+            if all(p in self.solved[rid] for p in r["solve_condition"])
+        )
 
     def puzzle_solved(self, puzzle_key: str) -> bool:
         return puzzle_key in self.solved[self.room_id]
@@ -191,11 +208,20 @@ class GameEngine:
         puzzle = puzzles[pkey]
         if self.puzzle_solved(pkey):
             return self._r([("dim", "Already unlocked.")])
+        from game_data import get_hint
+        hint_level = self.diff_cfg.get("hint_level", "partial")
+        hint_text  = get_hint(puzzle, hint_level)
         lines = [
             ("gold",   f"── Puzzle: {puzzle['label']} ──"),
-            ("normal", puzzle["hint"]),
+            ("dim",    f"[Difficulty: {self.diff_cfg['label']} — hint level: {hint_level}]"),
+        ]
+        if hint_level == "none":
+            lines.append(("warn", "No hints on Nightmare mode. Figure it out."))
+        else:
+            lines.append(("normal", hint_text))
+        lines += [
             ("dim",    ""),
-            ("warn",   f"Enter your answer: type  enter <code>  or use the GUI input."),
+            ("warn",   "Enter your answer: type  enter <code>  or use the GUI input."),
             ("dim",    f"[puzzle_key={pkey}]"),
         ]
         return self._r(lines, puzzle_key=pkey)
@@ -221,8 +247,10 @@ class GameEngine:
 
         if code.lower().strip() == puzzle["answer"].lower().strip():
             self.solved[self.room_id].append(pkey)
-            sol = puzzle["on_solve"]
-            lines = [("system", "[CORRECT] " + sol["msg"])]
+            sol    = puzzle["on_solve"]
+            xp_gain = self.diff_cfg.get("xp_per_puzzle", 25)
+            lines  = [("system", "[CORRECT] " + sol["msg"])]
+            lines.append(("system", f"[XP] +{xp_gain} XP ({self.diff_cfg['label']} mode)"))
             for item in sol.get("items", []):
                 self.add_item(item)
                 lines.append(("system", f"[ITEM] Obtained: {item['name']}"))
@@ -230,13 +258,23 @@ class GameEngine:
                 self.clues.append(clue)
                 lines.append(("system", f"[CLUE] {clue}"))
             if self.room_solved():
-                lines.append(("gold", "ALL PUZZLES SOLVED — type 'go n' or click PROCEED to advance."))
-            if pkey == "briefcase":
+                room_xp = self.diff_cfg.get("xp_per_room", 50)
+                lines.append(("gold", f"ALL PUZZLES SOLVED — +{room_xp} room bonus XP!"))
+                lines.append(("gold", "Type 'go n' or click PROCEED to advance."))
+            # Victory conditions
+            victory_keys = {"victory", "full_victory"}
+            if any(i.get("key") in victory_keys for i in sol.get("items", [])):
                 self.finished = True
                 self.escaped  = True
-                lines.append(("gold", "═══════════════════════════════════════"))
-                lines.append(("gold", "         VAULT ZERO — ESCAPED          "))
-                lines.append(("gold", "═══════════════════════════════════════"))
+                esc_xp = self.diff_cfg.get("xp_escape", 400)
+                lines.append(("gold", "═══════════════════════════════════════════"))
+                if "full_victory" in [i.get("key") for i in sol.get("items", [])]:
+                    lines.append(("gold", "   ★ VAULT ZERO — FULL COMPLETION ★     "))
+                    lines.append(("gold", "   Reactor secured. Facility saved.      "))
+                else:
+                    lines.append(("gold", "      VAULT ZERO — ESCAPED               "))
+                lines.append(("gold", f"   Escape bonus: +{esc_xp} XP               "))
+                lines.append(("gold", "═══════════════════════════════════════════"))
             return self._r(lines, changed=True, solved=pkey)
         else:
             return self._r([("error", f"[WRONG] Incorrect code. Try again.")], wrong=True)
@@ -303,12 +341,15 @@ class GameEngine:
         m, s = divmod(self.remaining, 60)
         lines = [
             ("gold",   "── Character Stats ──"),
-            ("normal", f"  Player : {self.player['username']}"),
-            ("normal", f"  Level  : {self.player['level']}"),
-            ("normal", f"  XP     : {self.player['total_xp']}"),
-            ("normal", f"  Escapes: {self.player['escapes']}"),
-            ("warn",   f"  Time   : {m:02d}:{s:02d} remaining"),
-            ("normal", f"  Room   : {self.room['name']}"),
+            ("normal", f"  Player     : {self.player['username']}"),
+            ("normal", f"  Level      : {self.player['level']}"),
+            ("normal", f"  XP         : {self.player['total_xp']}"),
+            ("normal", f"  Escapes    : {self.player['escapes']}"),
+            ("warn",   f"  Time left  : {m:02d}:{s:02d}"),
+            ("normal", f"  Room       : {self.room['name']}"),
+            ("normal", f"  Difficulty : {self.diff_cfg['label']}"),
+            ("normal", f"  Escape XP  : {self.diff_cfg['xp_escape']}"),
+            ("normal", f"  Puzzle XP  : {self.diff_cfg['xp_per_puzzle']} per puzzle"),
         ]
         return self._r(lines)
 
