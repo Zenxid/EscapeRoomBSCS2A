@@ -7,9 +7,9 @@ Screens  : MainMenuScreen   → full dashboard after login
 import sys
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QLabel, QPushButton, QFrame, QScrollArea,
+    QLabel, QPushButton, QFrame, QScrollArea, QProgressBar, QSizePolicy,
 )
-from PyQt6.QtCore  import Qt, QTimer, pyqtSignal
+from PyQt6.QtCore  import Qt, QTimer, pyqtSignal, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui   import QFont, QColor, QPainter, QPen
 
 from db               import get_leaderboard, game_log
@@ -169,14 +169,14 @@ class LeaderboardWidget(QFrame):
 
     # Rank table mirrored here for LeaderboardWidget (no access to self of screen)
     _RANKS = [
-        (0,    "Rookie",  "#8a7a65", "◈"),
-        (100,  "Agent",   "#4a8a4a", "◉"),
-        (300,  "Breaker", "#4a7ab0", "◆"),
-        (600,  "Ghost",   "#7a5ab0", "✦"),
-        (1000, "Phantom", "#d4a853", "★"),
-        (2000, "Wraith",  "#aa4a4a", "☿"),
-        (4000, "Specter", "#3a7a7a", "⬡"),
-        (7000, "Cipher",  "#d4a853", "⬟"),
+        (0,      "Rookie",  "#8a7a65", "◈"),
+        (1000,   "Agent",   "#4a8a4a", "◉"),
+        (3000,   "Breaker", "#4a7ab0", "◆"),
+        (7000,   "Ghost",   "#7a5ab0", "✦"),
+        (15000,  "Phantom", "#d4a853", "★"),
+        (30000,  "Wraith",  "#aa4a4a", "☿"),
+        (60000,  "Specter", "#3a7a7a", "⬡"),
+        (120000, "Cipher",  "#d4a853", "⬟"),
     ]
 
     def _get_rank(self, xp):
@@ -751,14 +751,15 @@ class MainMenuScreen(QWidget):
     # ── Rank system ────────────────────────────────────────────────────────────
     RANK_TABLE = [
         # (min_xp, name,       color,        badge)
-        (0,    "Rookie",    "#8a7a65",    "◈"),
-        (100,  "Agent",     "#4a8a4a",    "◉"),
-        (300,  "Breaker",   "#4a7ab0",    "◆"),
-        (600,  "Ghost",     "#7a5ab0",    "✦"),
-        (1000, "Phantom",   "#d4a853",    "★"),
-        (2000, "Wraith",    "#aa4a4a",    "☿"),
-        (4000, "Specter",   "#3a7a7a",    "⬡"),
-        (7000, "Cipher",    "#d4a853",    "⬟"),
+        # Thresholds inflated so ranks feel earned across many runs
+        (0,      "Rookie",    "#8a7a65",    "◈"),   # starting rank
+        (1000,   "Agent",     "#4a8a4a",    "◉"),   # ~1 easy full run
+        (3000,   "Breaker",   "#4a7ab0",    "◆"),   # ~3 easy / 1 normal
+        (7000,   "Ghost",     "#7a5ab0",    "✦"),   # ~2 normal full runs
+        (15000,  "Phantom",   "#d4a853",    "★"),   # ~1 hard full run
+        (30000,  "Wraith",    "#aa4a4a",    "☿"),   # ~2 hard runs
+        (60000,  "Specter",   "#3a7a7a",    "⬡"),   # ~1 nightmare full run
+        (120000, "Cipher",    "#d4a853",    "⬟"),   # elite — multiple nightmare
     ]
 
     def _rank_info(self, xp=None):
@@ -831,14 +832,14 @@ class MainMenuScreen(QWidget):
         vl.addWidget(_sep())
 
         _RANKS = [
-            (0,    "Rookie",  "#8a7a65", "◈"),
-            (100,  "Agent",   "#4a8a4a", "◉"),
-            (300,  "Breaker", "#4a7ab0", "◆"),
-            (600,  "Ghost",   "#7a5ab0", "✦"),
-            (1000, "Phantom", "#d4a853", "★"),
-            (2000, "Wraith",  "#aa4a4a", "☿"),
-            (4000, "Specter", "#3a7a7a", "⬡"),
-            (7000, "Cipher",  "#d4a853", "⬟"),
+            (0,      "Rookie",  "#8a7a65", "◈"),
+            (1000,   "Agent",   "#4a8a4a", "◉"),
+            (3000,   "Breaker", "#4a7ab0", "◆"),
+            (7000,   "Ghost",   "#7a5ab0", "✦"),
+            (15000,  "Phantom", "#d4a853", "★"),
+            (30000,  "Wraith",  "#aa4a4a", "☿"),
+            (60000,  "Specter", "#3a7a7a", "⬡"),
+            (120000, "Cipher",  "#d4a853", "⬟"),
         ]
         def get_rank(xp):
             r = _RANKS[0]
@@ -1035,19 +1036,36 @@ def _build_rank_progress(player: dict, screen) -> QFrame:
         xp_text_row.addWidget(_lbl(f"{next_rank[0]} XP", next_rank[2], 9))
     prog_col.addLayout(xp_text_row)
 
-    bar_frame = QFrame()
-    bar_frame.setFixedHeight(10)
-    bar_frame.setStyleSheet(
-        f"QFrame{{background:{C['bg3']};border:1px solid {C['border']};"
-        f"border-radius:4px;}}"
+    # Animated QProgressBar — animates from 0 → pct on show
+    from PyQt6.QtCore import QPropertyAnimation, QEasingCurve
+    anim_bar = QProgressBar()
+    anim_bar.setFixedHeight(12)
+    anim_bar.setMinimum(0)
+    anim_bar.setMaximum(100)
+    anim_bar.setValue(0)          # start at 0, animate to pct
+    anim_bar.setTextVisible(False)
+    anim_bar.setStyleSheet(
+        f"QProgressBar{{background:{C['bg3']};border:1px solid {C['border']};"
+        f"border-radius:5px;}}"
+        f"QProgressBar::chunk{{background:qlineargradient("
+        f"x1:0,y1:0,x2:1,y2:0,"
+        f"stop:0 {current[2]},stop:1 {next_rank[2] if next_rank else current[2]});"
+        f"border-radius:5px;}}"
     )
-    bar_inner = QFrame(bar_frame)
-    bar_w = max(4, int((pct / 100) * 200))
-    bar_inner.setGeometry(0, 0, bar_w, 10)
-    bar_inner.setStyleSheet(
-        f"QFrame{{background:{current[2]};border-radius:4px;border:none;}}"
-    )
-    prog_col.addWidget(bar_frame)
+    prog_col.addWidget(anim_bar)
+
+    # Animate fill after a short delay (so widget is visible when animation runs)
+    def _start_anim():
+        anim = QPropertyAnimation(anim_bar, b"value")
+        anim.setDuration(900)
+        anim.setStartValue(0)
+        anim.setEndValue(pct)
+        anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        anim.start()
+        # Keep reference alive so GC doesn't kill it mid-animation
+        anim_bar._anim = anim
+
+    QTimer.singleShot(120, _start_anim)
 
     if next_rank:
         prog_col.addWidget(_lbl(
