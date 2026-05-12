@@ -31,6 +31,8 @@ from lua_bridge  import fire_event
 from game_data   import ROOMS, export_quests_json
 from main_menu   import MainMenu
 from c_bridge    import puzzle_hash, run_token, c_available, verify_code
+import audio
+from icon_gen    import load_qt_icon
 
 # ── Shared palette ────────────────────────────────────────────────────────────
 C = {
@@ -245,8 +247,27 @@ class LoginScreen(QWidget):
         ft.setAlignment(Qt.AlignmentFlag.AlignCenter)
         ft.setStyleSheet(f"color:{C['text3']};font-size:10px;background:transparent;border:none;")
         cl.addSpacing(6); cl.addWidget(ft)
+
+        # Exit button — always visible on the login screen
+        cl.addSpacing(6)
+        exit_btn = _btn("[ EXIT VAULT ZERO ]", C["red"], C["red"], 10)
+        exit_btn.clicked.connect(QApplication.quit)
+        cl.addWidget(exit_btn)
+
         vl.addWidget(card)
         self._clog(C["green"], "[boot] auth system ready")
+
+    def clear_fields(self):
+        """Clear all login and register fields — called on logout."""
+        self._lu.clear()
+        self._lp.clear()
+        self._ru.clear()
+        self._re.clear()
+        self._rp.clear()
+        self._rp2.clear()
+        self._banner.hide()
+        self._switch(False)   # reset to login tab
+        self._clog(C["dim"], "[logout] session cleared")
 
     def _field(self, layout, lbl_text, ph, pw=False):
         lbl = QLabel(lbl_text)
@@ -1173,6 +1194,8 @@ class GameScreen(QWidget):
 
     def _game_over(self, reason):
         self.engine.finished = True
+        audio.on_alarm()
+        audio.play_bgm("gameover", loop=False)
         fire_event("game_over", self.engine.room_id, reason)
         save_run(self.player["id"], self.engine.elapsed, False, self.engine.room_id, self.difficulty)
 
@@ -1224,6 +1247,9 @@ class GameScreen(QWidget):
     def _enter_room(self):
         r   = self.engine.room
         evt = fire_event("room_enter", self.engine.room_id)
+
+        # Play room-specific BGM
+        audio.play_bgm(self.engine.room_id)
 
         # Start reactor meltdown timer when entering reactor
         if self.engine.room_id == "reactor" and not hasattr(self, "_meltdown_tmr"):
@@ -1318,12 +1344,15 @@ class GameScreen(QWidget):
             self._gui_print(result["lines"])
         if result.get("state_changed"):
             self._refresh_inv(); self._refresh_hud()
+            if result.get("solved_puzzle") is None:
+                audio.on_item_obtained()   # item taken, not puzzle solved
             # Repaint room art to reflect new state (item taken, puzzle solved etc.)
             if hasattr(self, "_room_art"):
                 self._room_art.set_state(self.engine.room_id, self.engine)
         # Always refresh actions — look_done flag may have changed (reveals take/use)
         self._refresh_actions()
         if result.get("room_changed"):
+            audio.on_proceed()
             self._enter_room(); return
         if result.get("puzzle_key"):
             self._show_puzzle(result["puzzle_key"])
@@ -1336,6 +1365,7 @@ class GameScreen(QWidget):
             if evt.get("flavour"):
                 self._print([("dim", evt["flavour"])])
                 self._gui_narr_line("dim", evt["flavour"])
+            audio.on_room_unlock() if self.engine.room_solved() else audio.on_puzzle_correct()
             self._hide_puzzle(); self._refresh_actions()
             if hasattr(self, "_room_art"):
                 self._room_art.set_state(self.engine.room_id, self.engine)
@@ -1343,6 +1373,7 @@ class GameScreen(QWidget):
             fire_event("puzzle_attempt", self.engine.room_id)
             if self._active_puzzle_widget:
                 self._active_puzzle_widget.set_wrong()
+            audio.on_puzzle_wrong()
             self._gui_narr_line("error", "✗  Wrong code — check your clues and try again.")
         if result.get("escaped"):
             self._on_escaped()
@@ -1450,7 +1481,7 @@ class GameScreen(QWidget):
                     QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
                 btn.setFixedHeight(26)
                 cmd = act["cmd"]
-                btn.clicked.connect(lambda c=False, cm=cmd: self._gui_action(cm))
+                btn.clicked.connect(lambda c=False, cm=cmd: (audio.on_button_click(), self._gui_action(cm)))
                 btn_row.addWidget(btn)
                 btn_col_idx += 1
 
@@ -1535,6 +1566,8 @@ class GameScreen(QWidget):
     # ── Escaped ────────────────────────────────────────────────────────────────
     def _on_escaped(self):
         self._tmr.stop()
+        audio.on_escape()
+        audio.play_bgm("victory", loop=False)
         fire_event("escape", self.engine.room_id)
         tok     = run_token(self.player["username"], self.engine.elapsed)
         is_full = self.engine.room_id == "reactor"
@@ -1668,6 +1701,7 @@ class GameScreen(QWidget):
 
         # Flash GUI narr as warning
         if self._meltdown_secs % 30 == 0 and self._meltdown_secs > 0:
+            audio.on_alarm()
             mins_left = self._meltdown_secs // 60
             self._gui_narr_line(
                 "warn" if self._meltdown_secs > 60 else "error",
@@ -1689,24 +1723,30 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Vault Zero")
 
-        # Detect screen resolution and cap window size
+        # ── App icon ──────────────────────────────────────────────────────────
+        icon = load_qt_icon()
+        if icon:
+            self.setWindowIcon(icon)
+            QApplication.instance().setWindowIcon(icon)
+
+        # ── Fullscreen on 720p and 1080p, maximised on larger ─────────────────
         screen = QApplication.primaryScreen()
         if screen:
-            sg   = screen.availableGeometry()
+            sg     = screen.availableGeometry()
             sw, sh = sg.width(), sg.height()
-            # 720p → 1260×700  |  1080p → 1280×760  |  larger → 1280×800
-            if sh <= 768:
-                w, h = min(1260, int(sw * 0.95)), min(700, int(sh * 0.92))
-            elif sh <= 1080:
-                w, h = min(1280, int(sw * 0.90)), min(760, int(sh * 0.88))
+            if sh <= 1080:
+                # 720p and 1080p — true fullscreen
+                self.setWindowState(
+                    Qt.WindowState.WindowFullScreen)
             else:
-                w, h = min(1440, int(sw * 0.85)), min(860, int(sh * 0.85))
-            self.setMaximumSize(int(sw * 0.98), int(sh * 0.96))
+                # 1440p+ — maximised but not fullscreen
+                self.setWindowState(
+                    Qt.WindowState.WindowMaximized)
         else:
-            w, h = 1280, 760
+            self.resize(1280, 760)
 
-        self.resize(w, h)
         self.setStyleSheet(BASE_STYLE)
+        self._fs = (screen and screen.availableGeometry().height() <= 1080)
         self._player = None
         self._game   = None
         self._menu   = None
@@ -1725,7 +1765,36 @@ class MainWindow(QMainWindow):
 
         self._stack.setCurrentWidget(self._boot)
 
+    def keyPressEvent(self, event):
+        """
+        F11    = toggle fullscreen
+        Escape = exit fullscreen
+        M      = mute/unmute audio
+        +/-    = BGM volume up/down
+        """
+        from PyQt6.QtCore import Qt as _Qt
+        key = event.key()
+        if key == _Qt.Key.Key_F11:
+            if self.isFullScreen():
+                self.showMaximized()
+            else:
+                self.showFullScreen()
+        elif key == _Qt.Key.Key_Escape:
+            if self.isFullScreen():
+                self.showMaximized()
+        elif key == _Qt.Key.Key_M:
+            muted = audio.toggle_mute()
+            # Show mute status in title bar briefly
+            self.setWindowTitle("Vault Zero  [ MUTED ]" if muted else "Vault Zero")
+        elif key in (_Qt.Key.Key_Plus, _Qt.Key.Key_Equal):
+            audio.set_bgm_volume(min(1.0, audio._BGM_VOL + 0.1))
+        elif key == _Qt.Key.Key_Minus:
+            audio.set_bgm_volume(max(0.0, audio._BGM_VOL - 0.1))
+        else:
+            super().keyPressEvent(event)
+
     def _show_login(self):
+        audio.play_bgm("menu")
         self._stack.setCurrentWidget(self._login)
 
     def _on_login(self, player: dict, token: str):
@@ -1745,6 +1814,7 @@ class MainWindow(QMainWindow):
         self._menu.play_requested.connect(self._launch_game)
         self._menu.logout_requested.connect(self._on_logout)
         self._stack.addWidget(self._menu)
+        audio.play_bgm("menu")
         self._stack.setCurrentWidget(self._menu)
 
     def _launch_game(self, payload):
@@ -1766,6 +1836,8 @@ class MainWindow(QMainWindow):
             self._stack.removeWidget(self._game); self._game.deleteLater(); self._game = None
         if self._menu:
             self._stack.removeWidget(self._menu); self._menu.deleteLater(); self._menu = None
+        self._login.clear_fields()          # wipe username/password fields
+        audio.stop_bgm(400)                 # fade out music
         self._stack.setCurrentWidget(self._login)
 
 
@@ -1776,6 +1848,7 @@ def main():
     init_db()
     export_quests_json()
     game_log("Application started")
+    audio.init()   # initialise pygame mixer
 
     app = QApplication(sys.argv)
     app.setApplicationName("Vault Zero")
@@ -1796,7 +1869,9 @@ def main():
     app.setPalette(palette)
 
     win = MainWindow(); win.show()
-    sys.exit(app.exec())
+    ret = app.exec()
+    audio.shutdown()
+    sys.exit(ret)
 
 
 if __name__ == "__main__":
