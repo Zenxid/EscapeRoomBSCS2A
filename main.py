@@ -167,36 +167,70 @@ class BootSequence(QWidget):
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# LOGIN SCREEN
+# LOGIN SCREEN — PERFECTLY CENTERED
 # ═════════════════════════════════════════════════════════════════════════════
 class LoginScreen(QWidget):
     login_success = pyqtSignal(dict, str)  # player, token
 
     def __init__(self):
         super().__init__()
-        vl = QVBoxLayout(self)
+        # Outer layout — scroll area so nothing is ever cut off on small screens
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet(
+            f"QScrollArea{{background:{C['bg']};border:none;}}"
+            f"QScrollBar:vertical{{background:{C['bg2']};width:6px;}}"
+            f"QScrollBar::handle:vertical{{background:{C['border2']};border-radius:3px;}}"
+            f"QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical{{height:0;}}")
+        outer.addWidget(scroll)
+
+        # Inner centering widget — uses QVBoxLayout with equal stretches to center card
+        inner = QWidget()
+        inner.setStyleSheet(f"background:{C['bg']};")
+        inner.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        vl = QVBoxLayout(inner)
         vl.setContentsMargins(0, 0, 0, 0)
-        vl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        card = QWidget(); card.setMaximumWidth(420)
+        vl.setSpacing(0)
+        scroll.setWidget(inner)
+
+        # Top spacer (pushed down)
+        vl.addStretch(1)
+
+        # Card widget — centered horizontally by max width and alignment
+        card = QWidget()
+        card.setMinimumWidth(400)
+        card.setMaximumWidth(520)
+        card.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
         card.setStyleSheet(
             f"background:{C['bg2']}; border:1px solid {C['border2']}; border-radius:10px;")
-        cl = QVBoxLayout(card); cl.setContentsMargins(28, 28, 28, 28); cl.setSpacing(0)
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(28, 24, 28, 24)
+        card_layout.setSpacing(0)
 
-        # title
+        # Title
         t = QLabel("VAULT ZERO")
-        t.setFont(QFont("Georgia", 22, QFont.Weight.Bold))
+        t.setFont(QFont("Georgia", 20, QFont.Weight.Bold))
         t.setAlignment(Qt.AlignmentFlag.AlignCenter)
         t.setStyleSheet(f"color:{C['gold']}; letter-spacing:4px; background:transparent; border:none;")
         s = QLabel("SECURE PLAYER AUTHENTICATION")
         s.setFont(QFont("Courier New", 9))
         s.setAlignment(Qt.AlignmentFlag.AlignCenter)
         s.setStyleSheet(f"color:{C['text3']}; letter-spacing:2px; background:transparent; border:none;")
-        cl.addWidget(t); cl.addWidget(s); cl.addSpacing(20)
+        card_layout.addWidget(t)
+        card_layout.addWidget(s)
+        card_layout.addSpacing(12)
 
-        # tabs
-        tr = QHBoxLayout(); tr.setSpacing(0)
-        self._tab_l = QPushButton("[ LOGIN ]");    self._tab_l.setCheckable(True)
-        self._tab_r = QPushButton("[ REGISTER ]"); self._tab_r.setCheckable(True)
+        # Tabs (Login / Register)
+        tr = QHBoxLayout()
+        tr.setSpacing(0)
+        self._tab_l = QPushButton("[ LOGIN ]")
+        self._tab_l.setCheckable(True)
+        self._tab_r = QPushButton("[ REGISTER ]")
+        self._tab_r.setCheckable(True)
         tab_ss = (f"QPushButton{{background:transparent;color:{C['text3']};border:none;"
                   f"border-bottom:2px solid transparent;padding:8px 20px;"
                   f"font-family:'Courier New';font-size:11px;}}"
@@ -206,55 +240,84 @@ class LoginScreen(QWidget):
         self._tab_l.setChecked(True)
         self._tab_l.clicked.connect(lambda: self._switch(False))
         self._tab_r.clicked.connect(lambda: self._switch(True))
-        tr.addWidget(self._tab_l); tr.addWidget(self._tab_r)
-        cl.addLayout(tr); cl.addSpacing(2)
-        sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
+        tr.addWidget(self._tab_l)
+        tr.addWidget(self._tab_r)
+        card_layout.addLayout(tr)
+        card_layout.addSpacing(2)
+
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color:{C['border']}; background:{C['border']};")
-        cl.addWidget(sep); cl.addSpacing(14)
+        card_layout.addWidget(sep)
+        card_layout.addSpacing(8)
 
-        # banner
-        self._banner = QLabel(""); self._banner.setWordWrap(True)
+        # Banner for error/success messages
+        self._banner = QLabel("")
+        self._banner.setWordWrap(True)
         self._banner.setStyleSheet("font-size:12px;padding:8px;border-radius:4px;background:transparent;border:none;")
-        self._banner.hide(); cl.addWidget(self._banner)
+        self._banner.hide()
+        card_layout.addWidget(self._banner)
 
-        # login form
-        self._lf = QWidget(); self._lf.setStyleSheet("background:transparent;border:none;")
-        ll = QVBoxLayout(self._lf); ll.setContentsMargins(0,0,0,0); ll.setSpacing(10)
+        # Login form
+        self._lf = QWidget()
+        self._lf.setStyleSheet("background:transparent;border:none;")
+        ll = QVBoxLayout(self._lf)
+        ll.setContentsMargins(0, 0, 0, 0)
+        ll.setSpacing(10)
         self._lu = self._field(ll, "USERNAME", "your_handle")
         self._lp = self._field(ll, "PASSWORD", "••••••••", True)
         lb = _btn("[ ENTER VAULT ]", C["gold"], C["gold2"], 12)
-        lb.clicked.connect(self._do_login); ll.addSpacing(4); ll.addWidget(lb)
-        self._lb = lb; cl.addWidget(self._lf)
+        lb.clicked.connect(self._do_login)
+        ll.addSpacing(4)
+        ll.addWidget(lb)
+        self._lb = lb
+        card_layout.addWidget(self._lf)
 
-        # register form
-        self._rf = QWidget(); self._rf.setStyleSheet("background:transparent;border:none;")
-        rl = QVBoxLayout(self._rf); rl.setContentsMargins(0,0,0,0); rl.setSpacing(10)
+        # Register form
+        self._rf = QWidget()
+        self._rf.setStyleSheet("background:transparent;border:none;")
+        rl = QVBoxLayout(self._rf)
+        rl.setContentsMargins(0, 0, 0, 0)
+        rl.setSpacing(10)
         self._ru  = self._field(rl, "USERNAME", "3-20 chars, letters/numbers/_")
         self._re  = self._field(rl, "EMAIL", "you@example.com")
         self._rp  = self._field(rl, "PASSWORD", "min 8 characters", True)
         self._rp2 = self._field(rl, "CONFIRM PASSWORD", "repeat password", True)
         rb = _btn("[ CREATE ACCOUNT ]", C["gold"], C["gold2"], 12)
-        rb.clicked.connect(self._do_register); rl.addSpacing(4); rl.addWidget(rb)
-        self._rb = rb; self._rf.hide(); cl.addWidget(self._rf)
+        rb.clicked.connect(self._do_register)
+        rl.addSpacing(4)
+        rl.addWidget(rb)
+        self._rb = rb
+        self._rf.hide()
+        card_layout.addWidget(self._rf)
 
-        # cli log
-        self._log = QTextEdit(); self._log.setReadOnly(True)
-        self._log.setFont(QFont("Courier New", 10)); self._log.setMaximumHeight(80)
+        # CLI log (terminal-like output)
+        self._log = QTextEdit()
+        self._log.setReadOnly(True)
+        self._log.setFont(QFont("Courier New", 10))
+        self._log.setMaximumHeight(70)
+        self._log.setMinimumHeight(50)
         self._log.setStyleSheet(f"background:#050403;border:1px solid {C['border']};border-radius:4px;")
-        cl.addSpacing(10); cl.addWidget(self._log)
+        card_layout.addSpacing(6)
+        card_layout.addWidget(self._log)
 
         ft = QLabel("db: arena.db  |  lang: python · sql · lua · bash · c")
         ft.setAlignment(Qt.AlignmentFlag.AlignCenter)
         ft.setStyleSheet(f"color:{C['text3']};font-size:10px;background:transparent;border:none;")
-        cl.addSpacing(6); cl.addWidget(ft)
+        card_layout.addSpacing(6)
+        card_layout.addWidget(ft)
 
-        # Exit button — always visible on the login screen
-        cl.addSpacing(6)
+        # Exit button — always visible on login screen
+        card_layout.addSpacing(6)
         exit_btn = _btn("[ EXIT VAULT ZERO ]", C["red"], C["red"], 10)
         exit_btn.clicked.connect(QApplication.quit)
-        cl.addWidget(exit_btn)
+        card_layout.addWidget(exit_btn)
 
-        vl.addWidget(card)
+        # Add card to inner layout
+        vl.addWidget(card, alignment=Qt.AlignmentFlag.AlignCenter)
+        # Bottom spacer (pushes up)
+        vl.addStretch(1)
+
         self._clog(C["green"], "[boot] auth system ready")
 
     def clear_fields(self):
@@ -272,35 +335,48 @@ class LoginScreen(QWidget):
     def _field(self, layout, lbl_text, ph, pw=False):
         lbl = QLabel(lbl_text)
         lbl.setStyleSheet(f"color:{C['text2']};font-size:11px;letter-spacing:1px;background:transparent;border:none;")
-        inp = QLineEdit(); inp.setPlaceholderText(ph)
-        if pw: inp.setEchoMode(QLineEdit.EchoMode.Password)
-        layout.addWidget(lbl); layout.addWidget(inp)
+        inp = QLineEdit()
+        inp.setPlaceholderText(ph)
+        if pw:
+            inp.setEchoMode(QLineEdit.EchoMode.Password)
+        layout.addWidget(lbl)
+        layout.addWidget(inp)
         return inp
 
     def _switch(self, show_reg: bool):
-        self._tab_l.setChecked(not show_reg); self._tab_r.setChecked(show_reg)
-        self._lf.setVisible(not show_reg); self._rf.setVisible(show_reg)
+        self._tab_l.setChecked(not show_reg)
+        self._tab_r.setChecked(show_reg)
+        self._lf.setVisible(not show_reg)
+        self._rf.setVisible(show_reg)
         self._banner.hide()
 
     def _banner_show(self, msg, ok=True):
         bg = "#0e1e0e" if ok else "#1e0e0e"
-        bdr= "#2a4a2a" if ok else "#4a2a2a"
-        col= C["green"] if ok else C["red"]
+        bdr = "#2a4a2a" if ok else "#4a2a2a"
+        col = C["green"] if ok else C["red"]
         self._banner.setStyleSheet(
             f"font-size:12px;padding:8px;border-radius:4px;background:{bg};border:1px solid {bdr};color:{col};")
-        self._banner.setText(msg); self._banner.show()
+        self._banner.setText(msg)
+        self._banner.show()
 
     def _clog(self, color, msg):
         cur = self._log.textCursor()
         cur.movePosition(QTextCursor.MoveOperation.End)
-        fmt = QTextCharFormat(); fmt.setForeground(QColor(color))
-        cur.setCharFormat(fmt); cur.insertText(msg + "\n")
-        self._log.setTextCursor(cur); self._log.ensureCursorVisible()
+        fmt = QTextCharFormat()
+        fmt.setForeground(QColor(color))
+        cur.setCharFormat(fmt)
+        cur.insertText(msg + "\n")
+        self._log.setTextCursor(cur)
+        self._log.ensureCursorVisible()
 
     def _do_login(self):
-        u = self._lu.text().strip(); p = self._lp.text()
-        if not u or not p: self._banner_show("Username and password required.", False); return
-        self._lb.setEnabled(False); self._lb.setText("[ AUTHENTICATING... ]")
+        u = self._lu.text().strip()
+        p = self._lp.text()
+        if not u or not p:
+            self._banner_show("Username and password required.", False)
+            return
+        self._lb.setEnabled(False)
+        self._lb.setText("[ AUTHENTICATING... ]")
         self._clog(C["dim"], f"[login] authenticating {u} ...")
         result = login(u, p)
         if result["ok"]:
@@ -309,18 +385,31 @@ class LoginScreen(QWidget):
         else:
             self._banner_show(result["error"], False)
             self._clog(C["red"], f"[login] FAIL: {result['error']}")
-        self._lb.setEnabled(True); self._lb.setText("[ ENTER VAULT ]")
+        self._lb.setEnabled(True)
+        self._lb.setText("[ ENTER VAULT ]")
 
     def _do_register(self):
-        u  = self._ru.text().strip(); e = self._re.text().strip()
-        p  = self._rp.text();         p2= self._rp2.text()
-        if len(u) < 3: self._banner_show("Username: 3+ characters.", False); return
+        u  = self._ru.text().strip()
+        e  = self._re.text().strip()
+        p  = self._rp.text()
+        p2 = self._rp2.text()
+        if len(u) < 3:
+            self._banner_show("Username: 3+ characters.", False)
+            return
         if not re.match(r"^[A-Za-z0-9_]{3,20}$", u):
-            self._banner_show("Username: letters, numbers, underscore only.", False); return
-        if "@" not in e: self._banner_show("Enter a valid email.", False); return
-        if len(p) < 8:   self._banner_show("Password: 8+ characters.", False); return
-        if p != p2:       self._banner_show("Passwords do not match.", False); return
-        self._rb.setEnabled(False); self._rb.setText("[ CREATING... ]")
+            self._banner_show("Username: letters, numbers, underscore only.", False)
+            return
+        if "@" not in e:
+            self._banner_show("Enter a valid email.", False)
+            return
+        if len(p) < 8:
+            self._banner_show("Password: 8+ characters.", False)
+            return
+        if p != p2:
+            self._banner_show("Passwords do not match.", False)
+            return
+        self._rb.setEnabled(False)
+        self._rb.setText("[ CREATING... ]")
         result = register(u, e, p)
         if result["ok"]:
             self._banner_show("Account created! You can now log in.", True)
@@ -328,7 +417,8 @@ class LoginScreen(QWidget):
             QTimer.singleShot(1200, lambda: self._switch(False))
         else:
             self._banner_show(result["error"], False)
-        self._rb.setEnabled(True); self._rb.setText("[ CREATE ACCOUNT ]")
+        self._rb.setEnabled(True)
+        self._rb.setText("[ CREATE ACCOUNT ]")
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -343,7 +433,9 @@ class PuzzleWidget(QFrame):
         self.puzzle_key = puzzle_key
         self.setStyleSheet(
             f"QFrame{{background:{C['bg3']};border:1px solid {C['border2']};border-radius:8px;}}")
-        vl = QVBoxLayout(self); vl.setContentsMargins(14, 14, 14, 14); vl.setSpacing(8)
+        vl = QVBoxLayout(self)
+        vl.setContentsMargins(14, 14, 14, 14)
+        vl.setSpacing(8)
 
         # Title row with difficulty badge
         title_row = QHBoxLayout()
@@ -371,7 +463,8 @@ class PuzzleWidget(QFrame):
             f"QFrame{{background:{C['bg2']};border:1px solid {C['border']};"
             f"border-radius:4px;}}")
         hfl = QVBoxLayout(hint_frame)
-        hfl.setContentsMargins(8, 6, 8, 6); hfl.setSpacing(0)
+        hfl.setContentsMargins(8, 6, 8, 6)
+        hfl.setSpacing(0)
 
         if hint_level == "none":
             # Nightmare — show lock icon, no text
@@ -411,17 +504,20 @@ class PuzzleWidget(QFrame):
         submit = _btn("[ SUBMIT ]", C["gold"], C["gold2"], 11)
         cancel.clicked.connect(self.cancelled.emit)
         submit.clicked.connect(self._submit)
-        br.addWidget(cancel); br.addWidget(submit)
+        br.addWidget(cancel)
+        br.addWidget(submit)
         vl.addLayout(br)
         QTimer.singleShot(50, self._inp.setFocus)
 
     def _submit(self):
         code = self._inp.text().strip()
-        if code: self.submitted.emit(self.puzzle_key, code)
+        if code:
+            self.submitted.emit(self.puzzle_key, code)
 
     def set_wrong(self):
         self._status.setText("✗  Wrong code — try again")
-        self._inp.selectAll(); self._inp.setFocus()
+        self._inp.selectAll()
+        self._inp.setFocus()
 
     def set_correct(self):
         self._status.setStyleSheet(
@@ -790,7 +886,8 @@ class RoomArtWidget(QWidget):
 
         # Briefcase (centre table)
         bc_col = self._col("green") if brief_solved else self._col("gold")
-        bfx = W//2 - 55; bfy = H//2 - 10
+        bfx = W//2 - 55
+        bfy = H//2 - 10
         p.fillRect(bfx, bfy, 110, 40, QColor(C["bg2"]))
         p.setPen(QPen(bc_col, 2))
         p.drawRect(bfx, bfy, 110, 40)
@@ -873,7 +970,8 @@ class RoomArtWidget(QWidget):
             p.drawLine(px, 20, px, H-20)
 
         # Control rod console (east, small)
-        rx = W-90; ry = H//2-25
+        rx = W-90
+        ry = H//2-25
         p.fillRect(rx, ry, 70, 50, QColor(C["bg2"]))
         p.setPen(QPen(self._col("border2"),1))
         p.drawRect(rx, ry, 70, 50)
@@ -931,12 +1029,17 @@ class GameScreen(QWidget):
 
     # ── Build ──────────────────────────────────────────────────────────────────
     def _build(self):
-        root = QVBoxLayout(self); root.setContentsMargins(0,0,0,0); root.setSpacing(0)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0,0,0,0)
+        root.setSpacing(0)
 
         # ── Top bar ────────────────────────────────────────────────────────────
-        topbar = QFrame(); topbar.setFixedHeight(42)
+        topbar = QFrame()
+        topbar.setFixedHeight(38)
         topbar.setStyleSheet(f"background:{C['bg2']};border-bottom:1px solid {C['border']};")
-        tb = QHBoxLayout(topbar); tb.setContentsMargins(12,0,12,0); tb.setSpacing(14)
+        tb = QHBoxLayout(topbar)
+        tb.setContentsMargins(12,0,12,0)
+        tb.setSpacing(14)
 
         title = QLabel("VAULT ZERO")
         title.setFont(QFont("Georgia", 13, QFont.Weight.Bold))
@@ -949,7 +1052,9 @@ class GameScreen(QWidget):
             f"color:{mode_badge_colors.get(self.mode, C['text3'])};"
             f"background:transparent;border:none;letter-spacing:1px;")
 
-        tb.addWidget(title); tb.addWidget(mode_badge); tb.addStretch()
+        tb.addWidget(title)
+        tb.addWidget(mode_badge)
+        tb.addStretch()
 
         self._hud_room   = self._hud("ROOM 1/4", tb)
         self._hud_solved = self._hud("SOLVED 0/4", tb)
@@ -965,8 +1070,11 @@ class GameScreen(QWidget):
         root.addWidget(topbar)
 
         # ── Content area (mode-dependent) ──────────────────────────────────────
-        content = QWidget(); content.setStyleSheet("background:transparent;")
-        cl = QHBoxLayout(content); cl.setContentsMargins(0,0,0,0); cl.setSpacing(0)
+        content = QWidget()
+        content.setStyleSheet("background:transparent;")
+        cl = QHBoxLayout(content)
+        cl.setContentsMargins(0,0,0,0)
+        cl.setSpacing(0)
 
         show_cli = self.mode in ("CLI", "MIXED")
         show_gui = self.mode in ("GUI", "MIXED")
@@ -980,55 +1088,76 @@ class GameScreen(QWidget):
             splitter.setSizes([560, 560])
             splitter.setStretchFactor(0, 1)
             splitter.setStretchFactor(1, 1)
-            cl.addWidget(splitter)
+            cl.addWidget(splitter, 1)          # stretch=1 fills all available height
         elif show_cli:
-            cl.addWidget(self._build_cli_panel())
+            cl.addWidget(self._build_cli_panel(), 1)   # stretch=1 fills height
         elif show_gui:
-            cl.addWidget(self._build_gui_panel())
+            cl.addWidget(self._build_gui_panel(), 1)   # stretch=1 fills height
 
         root.addWidget(content, 1)
 
         # ── Bottom bar ─────────────────────────────────────────────────────────
-        botbar = QFrame(); botbar.setFixedHeight(26)
+        botbar = QFrame()
+        botbar.setFixedHeight(22)
         botbar.setStyleSheet(f"background:#040302;border-top:1px solid {C['border']};")
-        bb = QHBoxLayout(botbar); bb.setContentsMargins(12,0,12,0)
+        bb = QHBoxLayout(botbar)
+        bb.setContentsMargins(12,0,12,0)
         self._bot_db = QLabel("db: arena.db")
         self._bot_db.setStyleSheet(f"color:{C['text3']};font-size:10px;background:transparent;")
         langs = QLabel("bash · python · lua · sql · c")
         langs.setStyleSheet(f"color:{C['text3']};font-size:10px;background:transparent;")
-        bb.addWidget(self._bot_db); bb.addStretch(); bb.addWidget(langs)
+        bb.addWidget(self._bot_db)
+        bb.addStretch()
+        bb.addWidget(langs)
         root.addWidget(botbar)
 
     def _hud(self, text, layout):
-        l = QLabel(text); l.setFont(QFont("Courier New", 10))
+        l = QLabel(text)
+        l.setFont(QFont("Courier New", 10))
         l.setStyleSheet(f"color:{C['text2']};background:transparent;")
-        layout.addWidget(l); return l
+        layout.addWidget(l)
+        return l
 
     # ── CLI panel ──────────────────────────────────────────────────────────────
     def _build_cli_panel(self):
-        w = QWidget(); vl = QVBoxLayout(w); vl.setContentsMargins(0,0,0,0); vl.setSpacing(0)
-        hdr = QFrame(); hdr.setFixedHeight(28)
+        w = QWidget()
+        vl = QVBoxLayout(w)
+        vl.setContentsMargins(0,0,0,0)
+        vl.setSpacing(0)
+        hdr = QFrame()
+        hdr.setFixedHeight(28)
         hdr.setStyleSheet(f"background:{C['bg2']};border-bottom:1px solid {C['border']};")
-        hl = QHBoxLayout(hdr); hl.setContentsMargins(10,0,10,0)
-        dot = QLabel("●"); dot.setStyleSheet(f"color:#3a6a3a;font-size:8px;background:transparent;")
+        hl = QHBoxLayout(hdr)
+        hl.setContentsMargins(10,0,10,0)
+        dot = QLabel("●")
+        dot.setStyleSheet(f"color:#3a6a3a;font-size:8px;background:transparent;")
         lbl = QLabel("CLI — bash/python/c layer")
         lbl.setStyleSheet(f"color:{C['text3']};font-size:10px;letter-spacing:1px;background:transparent;")
-        hl.addWidget(dot); hl.addWidget(lbl); hl.addStretch()
+        hl.addWidget(dot)
+        hl.addWidget(lbl)
+        hl.addStretch()
         vl.addWidget(hdr)
 
-        self._cli_out = QTextEdit(); self._cli_out.setReadOnly(True)
+        self._cli_out = QTextEdit()
+        self._cli_out.setReadOnly(True)
         self._cli_out.setFont(QFont("Courier New", 12))
         self._cli_out.setStyleSheet(f"background:#050403;border:none;padding:6px;")
         vl.addWidget(self._cli_out, 1)
 
         hint = QLabel("  look · examine [obj] · open [obj] · use [item] on [obj] · go n · help")
-        hint.setStyleSheet(f"color:{C['text3']};font-size:10px;background:#050403;padding:2px 8px;")
+        hint.setStyleSheet(f"color:{C['text3']};font-size:9px;background:#050403;padding:1px 8px;")
+        hint.setFixedHeight(18)
         vl.addWidget(hint)
 
-        inp_f = QFrame(); inp_f.setFixedHeight(38)
+        inp_f = QFrame()
+        inp_f.setMinimumHeight(36)
+        inp_f.setMaximumHeight(44)
         inp_f.setStyleSheet(f"background:#050403;border-top:1px solid {C['border']};")
-        il = QHBoxLayout(inp_f); il.setContentsMargins(8,4,8,4); il.setSpacing(4)
-        prompt = QLabel("vault>"); prompt.setFont(QFont("Courier New", 12))
+        il = QHBoxLayout(inp_f)
+        il.setContentsMargins(8,4,8,4)
+        il.setSpacing(4)
+        prompt = QLabel("vault>")
+        prompt.setFont(QFont("Courier New", 12))
         prompt.setStyleSheet(f"color:{C['green']};background:transparent;")
         self._cli_inp = QLineEdit()
         self._cli_inp.setFont(QFont("Courier New", 12))
@@ -1036,22 +1165,32 @@ class GameScreen(QWidget):
             f"background:transparent;color:{C['gold']};border:none;padding:0;")
         self._cli_inp.setPlaceholderText("enter command...")
         self._cli_inp.returnPressed.connect(self._cli_submit)
-        il.addWidget(prompt); il.addWidget(self._cli_inp, 1)
+        il.addWidget(prompt)
+        il.addWidget(self._cli_inp, 1)
         vl.addWidget(inp_f)
         return w
 
     # ── GUI panel ──────────────────────────────────────────────────────────────
     def _build_gui_panel(self):
-        w = QWidget(); vl = QVBoxLayout(w); vl.setContentsMargins(0,0,0,0); vl.setSpacing(0)
+        w = QWidget()
+        vl = QVBoxLayout(w)
+        vl.setContentsMargins(0,0,0,0)
+        vl.setSpacing(0)
 
         # Panel header — thin strip
-        hdr = QFrame(); hdr.setFixedHeight(26)
+        hdr = QFrame()
+        hdr.setFixedHeight(26)
         hdr.setStyleSheet(f"background:{C['bg2']};border-bottom:1px solid {C['border']};")
-        hl = QHBoxLayout(hdr); hl.setContentsMargins(10,0,10,0); hl.setSpacing(8)
-        dot = QLabel("●"); dot.setStyleSheet(f"color:#8a6a2a;font-size:8px;background:transparent;")
+        hl = QHBoxLayout(hdr)
+        hl.setContentsMargins(10,0,10,0)
+        hl.setSpacing(8)
+        dot = QLabel("●")
+        dot.setStyleSheet(f"color:#8a6a2a;font-size:8px;background:transparent;")
         lbl = QLabel("GUI — PyQt6 layer")
         lbl.setStyleSheet(f"color:{C['text3']};font-size:10px;letter-spacing:1px;background:transparent;")
-        hl.addWidget(dot); hl.addWidget(lbl); hl.addStretch()
+        hl.addWidget(dot)
+        hl.addWidget(lbl)
+        hl.addStretch()
         self._db_lbl = QLabel("db: arena.db")
         self._db_lbl.setStyleSheet(f"color:{C['text3']};font-size:10px;background:transparent;")
         hl.addWidget(self._db_lbl)
@@ -1063,11 +1202,13 @@ class GameScreen(QWidget):
         vl.addWidget(self._room_art, 3)
 
         # Room name — slim fixed bar, no wasted vertical space
-        name_bar = QFrame(); name_bar.setFixedHeight(28)
+        name_bar = QFrame()
+        name_bar.setFixedHeight(28)
         name_bar.setStyleSheet(
             f"background:{C['bg3']};border-top:1px solid {C['border']};"
             f"border-bottom:1px solid {C['border']};")
-        nl = QHBoxLayout(name_bar); nl.setContentsMargins(12,0,12,0)
+        nl = QHBoxLayout(name_bar)
+        nl.setContentsMargins(12,0,12,0)
         self._room_name = QLabel()
         self._room_name.setFont(QFont("Georgia", 11, QFont.Weight.Bold))
         self._room_name.setAlignment(
@@ -1113,7 +1254,9 @@ class GameScreen(QWidget):
         acts_outer.setStyleSheet(
             f"QFrame{{background:{C['bg2']};border-top:1px solid {C['border']};}}")
         acts_outer.setFixedHeight(160)
-        ao_vl = QVBoxLayout(acts_outer); ao_vl.setContentsMargins(0,0,0,0); ao_vl.setSpacing(0)
+        ao_vl = QVBoxLayout(acts_outer)
+        ao_vl.setContentsMargins(0,0,0,0)
+        ao_vl.setSpacing(0)
 
         # Group label strip
         self._acts_group_lbl = QLabel("  ACTIONS")
@@ -1145,12 +1288,14 @@ class GameScreen(QWidget):
         vl.addWidget(acts_outer)
 
         # Inventory bar — scrollable, fixed height, never widens window
-        inv_f = QFrame(); inv_f.setFixedHeight(34)
+        inv_f = QFrame()
+        inv_f.setFixedHeight(34)
         inv_f.setStyleSheet(
             f"background:{C['bg2']};border-top:1px solid {C['border']};")
 
         inv_outer = QHBoxLayout(inv_f)
-        inv_outer.setContentsMargins(4,2,4,2); inv_outer.setSpacing(0)
+        inv_outer.setContentsMargins(4,2,4,2)
+        inv_outer.setSpacing(0)
 
         # Scroll area so items wrap horizontally without widening the frame
         self._inv_scroll = QScrollArea()
@@ -1181,16 +1326,21 @@ class GameScreen(QWidget):
 
     # ── Timer ──────────────────────────────────────────────────────────────────
     def _start_timer(self):
-        self._tmr = QTimer(self); self._tmr.timeout.connect(self._tick); self._tmr.start(1000)
+        self._tmr = QTimer(self)
+        self._tmr.timeout.connect(self._tick)
+        self._tmr.start(1000)
 
     def _tick(self):
-        if self.engine.finished: return
-        r = self.engine.remaining; m, s = divmod(r, 60)
+        if self.engine.finished:
+            return
+        r = self.engine.remaining
+        m, s = divmod(r, 60)
         self._hud_timer.setText(f"{m:02d}:{s:02d}")
         if r <= 60:
             self._hud_timer.setStyleSheet(f"color:{C['red']};background:transparent;")
         if r <= 0:
-            self._tmr.stop(); self._game_over("Time expired")
+            self._tmr.stop()
+            self._game_over("Time expired")
 
     def _game_over(self, reason):
         self.engine.finished = True
@@ -1271,7 +1421,8 @@ class GameScreen(QWidget):
             self._room_desc.setText(desc_text)
             self._room_art.set_state(self.engine.room_id, self.engine)
             db_txt = f"db: {r['db_indicator']}"
-            if hasattr(self, "_db_lbl"):    self._db_lbl.setText(db_txt)
+            if hasattr(self, "_db_lbl"):
+                self._db_lbl.setText(db_txt)
             self._bot_db.setText(db_txt)
             self._refresh_actions()
             self._refresh_inv()
@@ -1284,7 +1435,8 @@ class GameScreen(QWidget):
     # ── CLI ────────────────────────────────────────────────────────────────────
     def _cli_submit(self):
         raw = self._cli_inp.text().strip()
-        if not raw: return
+        if not raw:
+            return
         self._cli_inp.clear()
         self._print([("dim", f"vault> "), ("gold", raw)], nl=False)
         self._println()
@@ -1296,7 +1448,8 @@ class GameScreen(QWidget):
         self._handle(result)
 
     def _print(self, lines, nl=True):
-        if not hasattr(self, "_cli_out"): return
+        if not hasattr(self, "_cli_out"):
+            return
         cur = self._cli_out.textCursor()
         cur.movePosition(QTextCursor.MoveOperation.End)
         for item in lines:
@@ -1308,21 +1461,25 @@ class GameScreen(QWidget):
         self._cli_out.setTextCursor(cur)
         self._cli_out.ensureCursorVisible()
 
-    def _println(self): self._print([("dim", "")])
+    def _println(self):
+        self._print([("dim", "")])
 
     def _gui_print(self, lines):
         """Mirror output lines to the GUI narrative QLabel (no scroll, no TextEdit)."""
-        if not hasattr(self, "_gui_narr"): return
+        if not hasattr(self, "_gui_narr"):
+            return
         # Collect visible lines, skip CLI-only noise
         parts = []
         for item in lines:
             style, text = (item[0], item[1]) if len(item) == 2 else ("normal", str(item))
-            if not text.strip(): continue
+            if not text.strip():
+                continue
             if style == "dim" and (text.startswith("[db]") or text.startswith("[c]")
                                    or text.startswith("Type") or text.startswith("──")):
                 continue
             parts.append(text)
-        if not parts: return
+        if not parts:
+            return
         # Append to existing text (keep last 6 lines to avoid label growing forever)
         current = self._gui_narr.text()
         all_lines = [l for l in current.split("\n") if l.strip()] + parts
@@ -1334,7 +1491,8 @@ class GameScreen(QWidget):
 
     def _gui_narr_clear(self):
         """Clear the GUI narrative label."""
-        if hasattr(self, "_gui_narr"): self._gui_narr.setText("")
+        if hasattr(self, "_gui_narr"):
+            self._gui_narr.setText("")
 
     # ── Result handler ─────────────────────────────────────────────────────────
     def _handle(self, result: dict):
@@ -1343,7 +1501,8 @@ class GameScreen(QWidget):
         if hasattr(self, "_gui_narr"):
             self._gui_print(result["lines"])
         if result.get("state_changed"):
-            self._refresh_inv(); self._refresh_hud()
+            self._refresh_inv()
+            self._refresh_hud()
             if result.get("solved_puzzle") is None:
                 audio.on_item_obtained()   # item taken, not puzzle solved
             # Repaint room art to reflect new state (item taken, puzzle solved etc.)
@@ -1353,7 +1512,8 @@ class GameScreen(QWidget):
         self._refresh_actions()
         if result.get("room_changed"):
             audio.on_proceed()
-            self._enter_room(); return
+            self._enter_room()
+            return
         if result.get("puzzle_key"):
             self._show_puzzle(result["puzzle_key"])
         if result.get("solved_puzzle"):
@@ -1366,7 +1526,8 @@ class GameScreen(QWidget):
                 self._print([("dim", evt["flavour"])])
                 self._gui_narr_line("dim", evt["flavour"])
             audio.on_room_unlock() if self.engine.room_solved() else audio.on_puzzle_correct()
-            self._hide_puzzle(); self._refresh_actions()
+            self._hide_puzzle()
+            self._refresh_actions()
             if hasattr(self, "_room_art"):
                 self._room_art.set_state(self.engine.room_id, self.engine)
         if result.get("wrong_code"):
@@ -1380,12 +1541,14 @@ class GameScreen(QWidget):
 
     # ── Puzzle ─────────────────────────────────────────────────────────────────
     def _show_puzzle(self, pkey: str):
-        if not hasattr(self, "_puzzle_area"): return
+        if not hasattr(self, "_puzzle_area"):
+            return
         self._active_puzzle_key = pkey
         puzzle = self.engine.room["puzzles"][pkey]
         while self._puzzle_vl.count():
             w = self._puzzle_vl.takeAt(0).widget()
-            if w: w.deleteLater()
+            if w:
+                w.deleteLater()
         pw = PuzzleWidget(pkey, puzzle, self.difficulty)
         pw.submitted.connect(self._gui_submit)
         pw.cancelled.connect(self._hide_puzzle)
@@ -1394,8 +1557,10 @@ class GameScreen(QWidget):
         self._puzzle_area.show()
 
     def _hide_puzzle(self):
-        if hasattr(self, "_puzzle_area"): self._puzzle_area.hide()
-        self._active_puzzle_key = None; self._active_puzzle_widget = None
+        if hasattr(self, "_puzzle_area"):
+            self._puzzle_area.hide()
+        self._active_puzzle_key = None
+        self._active_puzzle_widget = None
 
     def _gui_submit(self, pkey: str, code: str):
         self._print([("dim", f"vault> enter {code}")])
@@ -1407,7 +1572,8 @@ class GameScreen(QWidget):
 
     # ── Action buttons ─────────────────────────────────────────────────────────
     def _refresh_actions(self):
-        if not hasattr(self, "_acts_layout"): return
+        if not hasattr(self, "_acts_layout"):
+            return
 
         # Clear all existing items
         while self._acts_layout.count():
@@ -1499,18 +1665,21 @@ class GameScreen(QWidget):
                 f"  ACTIONS  ·  {room_name}  ·  {n_actions} available")
 
     def _gui_action(self, cmd: str):
-        self._print([("dim","vault> "), ("gold", cmd)], nl=False); self._println()
+        self._print([("dim","vault> "), ("gold", cmd)], nl=False)
+        self._println()
         result = self.engine.parse(cmd)
         self._handle(result)
 
     # ── Inventory ──────────────────────────────────────────────────────────────
     def _refresh_inv(self):
-        if not hasattr(self, "_inv_layout"): return
+        if not hasattr(self, "_inv_layout"):
+            return
         # Remove all existing widgets
         while self._inv_layout.count():
             item = self._inv_layout.takeAt(0)
             w = item.widget()
-            if w: w.deleteLater()
+            if w:
+                w.deleteLater()
 
         if not self.engine.inventory:
             e = QLabel("inventory empty")
@@ -1644,11 +1813,14 @@ class GameScreen(QWidget):
             while self._acts_layout.count():
                 item = self._acts_layout.takeAt(0)
                 w = item.widget()
-                if w: w.deleteLater()
+                if w:
+                    w.deleteLater()
 
-            btn_row = QWidget(); btn_row.setStyleSheet("background:transparent;")
+            btn_row = QWidget()
+            btn_row.setStyleSheet("background:transparent;")
             bhl = QHBoxLayout(btn_row)
-            bhl.setContentsMargins(8, 8, 8, 8); bhl.setSpacing(10)
+            bhl.setContentsMargins(8, 8, 8, 8)
+            bhl.setSpacing(10)
 
             finish_btn = _btn("[ RETURN TO MENU ]", C["gold"], C["gold2"], 12)
             finish_btn.setFixedHeight(36)
@@ -1809,7 +1981,8 @@ class MainWindow(QMainWindow):
         if fresh:
             self._player = fresh
         if self._menu:
-            self._stack.removeWidget(self._menu); self._menu.deleteLater()
+            self._stack.removeWidget(self._menu)
+            self._menu.deleteLater()
         self._menu = MainMenu(self._player)
         self._menu.play_requested.connect(self._launch_game)
         self._menu.logout_requested.connect(self._on_logout)
@@ -1824,7 +1997,8 @@ class MainWindow(QMainWindow):
         else:
             mode, difficulty = payload, "normal"
         if self._game:
-            self._stack.removeWidget(self._game); self._game.deleteLater()
+            self._stack.removeWidget(self._game)
+            self._game.deleteLater()
         self._game = GameScreen(self._player, mode, difficulty)
         self._game.logout_requested.connect(self._on_logout)
         self._game.menu_requested.connect(self._show_menu)
@@ -1833,9 +2007,13 @@ class MainWindow(QMainWindow):
 
     def _on_logout(self):
         if self._game:
-            self._stack.removeWidget(self._game); self._game.deleteLater(); self._game = None
+            self._stack.removeWidget(self._game)
+            self._game.deleteLater()
+            self._game = None
         if self._menu:
-            self._stack.removeWidget(self._menu); self._menu.deleteLater(); self._menu = None
+            self._stack.removeWidget(self._menu)
+            self._menu.deleteLater()
+            self._menu = None
         self._login.clear_fields()          # wipe username/password fields
         audio.stop_bgm(400)                 # fade out music
         self._stack.setCurrentWidget(self._login)
@@ -1868,7 +2046,8 @@ def main():
         palette.setColor(role, QColor(col))
     app.setPalette(palette)
 
-    win = MainWindow(); win.show()
+    win = MainWindow()
+    win.show()
     ret = app.exec()
     audio.shutdown()
     sys.exit(ret)
