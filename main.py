@@ -579,16 +579,12 @@ ROOM_ART = {
 # DYNAMIC ROOM ART WIDGET  (QPainter — redraws based on game state)
 # ═════════════════════════════════════════════════════════════════════════════
 class RoomArtWidget(QWidget):
-    """
-    Draws room art dynamically using QPainter.
-    Objects change appearance when examined/solved — state is pulled
-    from the GameEngine on every repaint.
-    """
+    
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedHeight(120)
+        self.setMinimumHeight(150)
         self._room_id  = "storage"
-        self._engine   = None   # set after build
+        self._engine   = None
 
     def set_state(self, room_id: str, engine):
         self._room_id = room_id
@@ -1120,10 +1116,21 @@ class GameScreen(QWidget):
 
     # ── CLI panel ──────────────────────────────────────────────────────────────
     def _build_cli_panel(self):
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setStyleSheet(
+            f"QScrollArea{{background:{C['bg']};border:none;}}"
+            f"QScrollBar:vertical{{background:{C['bg2']};width:8px;}}"
+            f"QScrollBar::handle:vertical{{background:{C['border2']};border-radius:4px;}}"
+            f"QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical{{height:0;}}")
+        
         w = QWidget()
+        w.setMinimumHeight(400)
         vl = QVBoxLayout(w)
         vl.setContentsMargins(0,0,0,0)
         vl.setSpacing(0)
+
         hdr = QFrame()
         hdr.setFixedHeight(28)
         hdr.setStyleSheet(f"background:{C['bg2']};border-bottom:1px solid {C['border']};")
@@ -1168,16 +1175,36 @@ class GameScreen(QWidget):
         il.addWidget(prompt)
         il.addWidget(self._cli_inp, 1)
         vl.addWidget(inp_f)
-        return w
+
+        scroll.setWidget(w)
+        
+        self._cli_scroll = scroll
+        
+        QTimer.singleShot(50, self._cli_scroll_to_bottom)
+        
+        return scroll
+
+    def _cli_scroll_to_bottom(self):
+        """Scroll the CLI scroll area to the very bottom (shows the input line)."""
+        if hasattr(self, "_cli_scroll") and self._cli_scroll:
+            sb = self._cli_scroll.verticalScrollBar()
+            sb.setValue(sb.maximum())
 
     # ── GUI panel ──────────────────────────────────────────────────────────────
     def _build_gui_panel(self):
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet(
+            f"QScrollArea{{background:{C['bg']};border:none;}}"
+            f"QScrollBar:vertical{{background:{C['bg2']};width:6px;}}"
+            f"QScrollBar::handle:vertical{{background:{C['border2']};border-radius:3px;}}"
+            f"QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical{{height:0;}}")
+
         w = QWidget()
         vl = QVBoxLayout(w)
         vl.setContentsMargins(0,0,0,0)
         vl.setSpacing(0)
 
-        # Panel header — thin strip
         hdr = QFrame()
         hdr.setFixedHeight(26)
         hdr.setStyleSheet(f"background:{C['bg2']};border-bottom:1px solid {C['border']};")
@@ -1196,12 +1223,10 @@ class GameScreen(QWidget):
         hl.addWidget(self._db_lbl)
         vl.addWidget(hdr)
 
-        # Room art — large, takes most of the panel height
         self._room_art = RoomArtWidget()
-        self._room_art.setMinimumHeight(200)
+        self._room_art.setMinimumHeight(150)
         vl.addWidget(self._room_art, 3)
 
-        # Room name — slim fixed bar, no wasted vertical space
         name_bar = QFrame()
         name_bar.setFixedHeight(28)
         name_bar.setStyleSheet(
@@ -1211,54 +1236,43 @@ class GameScreen(QWidget):
         nl.setContentsMargins(12,0,12,0)
         self._room_name = QLabel()
         self._room_name.setFont(QFont("Georgia", 11, QFont.Weight.Bold))
-        self._room_name.setAlignment(
-            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+        self._room_name.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
         self._room_name.setStyleSheet(f"color:{C['gold']};background:transparent;")
         nl.addWidget(self._room_name)
         vl.addWidget(name_bar)
 
-        # Room description — plain QLabel, word-wrapped, no scroll bar
         self._room_desc = QLabel()
         self._room_desc.setFont(QFont("Georgia", 11))
         self._room_desc.setWordWrap(True)
-        self._room_desc.setAlignment(
-            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        self._room_desc.setStyleSheet(
-            f"color:{C['text']};background:{C['bg']};padding:10px 14px;")
+        self._room_desc.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self._room_desc.setStyleSheet(f"color:{C['text']};background:{C['bg']};padding:10px 14px;")
         self._room_desc.setMinimumHeight(60)
         vl.addWidget(self._room_desc, 1)
 
-        # GUI feedback — QLabel, word-wrapped, expands, no scroll
         self._gui_narr = QLabel()
         self._gui_narr.setFont(QFont("Courier New", 10))
         self._gui_narr.setWordWrap(True)
-        self._gui_narr.setAlignment(
-            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self._gui_narr.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         self._gui_narr.setStyleSheet(
             f"color:{C['text2']};background:{C['bg2']};padding:8px 12px;"
             f"border-top:1px solid {C['border']};")
         self._gui_narr.setMinimumHeight(50)
         vl.addWidget(self._gui_narr, 1)
 
-        # Puzzle area
         self._puzzle_area = QWidget()
-        self._puzzle_area.setStyleSheet(
-            f"background:{C['bg3']};border-top:1px solid {C['border']};")
+        self._puzzle_area.setStyleSheet(f"background:{C['bg3']};border-top:1px solid {C['border']};")
         self._puzzle_vl = QVBoxLayout(self._puzzle_area)
         self._puzzle_vl.setContentsMargins(0,0,0,0)
         self._puzzle_area.hide()
         vl.addWidget(self._puzzle_area)
 
-        # Action panel — scrollable, grouped, holds all GUI actions
         acts_outer = QFrame()
-        acts_outer.setStyleSheet(
-            f"QFrame{{background:{C['bg2']};border-top:1px solid {C['border']};}}")
-        acts_outer.setFixedHeight(160)
+        acts_outer.setStyleSheet(f"QFrame{{background:{C['bg2']};border-top:1px solid {C['border']};}}")
+        acts_outer.setFixedHeight(140)    # was 160
         ao_vl = QVBoxLayout(acts_outer)
         ao_vl.setContentsMargins(0,0,0,0)
         ao_vl.setSpacing(0)
 
-        # Group label strip
         self._acts_group_lbl = QLabel("  ACTIONS")
         self._acts_group_lbl.setFixedHeight(20)
         self._acts_group_lbl.setFont(QFont("Courier New", 9))
@@ -1267,11 +1281,9 @@ class GameScreen(QWidget):
             f"padding-left:10px;border-bottom:1px solid {C['border']};")
         ao_vl.addWidget(self._acts_group_lbl)
 
-        # Scroll area containing the button grid
         self._acts_scroll = QScrollArea()
         self._acts_scroll.setWidgetResizable(True)
-        self._acts_scroll.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._acts_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._acts_scroll.setStyleSheet(
             f"QScrollArea{{background:{C['bg2']};border:none;}}"
             f"QScrollBar:vertical{{background:{C['bg3']};width:5px;}}"
@@ -1287,24 +1299,18 @@ class GameScreen(QWidget):
         ao_vl.addWidget(self._acts_scroll)
         vl.addWidget(acts_outer)
 
-        # Inventory bar — scrollable, fixed height, never widens window
         inv_f = QFrame()
         inv_f.setFixedHeight(34)
-        inv_f.setStyleSheet(
-            f"background:{C['bg2']};border-top:1px solid {C['border']};")
-
+        inv_f.setStyleSheet(f"background:{C['bg2']};border-top:1px solid {C['border']};")
         inv_outer = QHBoxLayout(inv_f)
         inv_outer.setContentsMargins(4,2,4,2)
         inv_outer.setSpacing(0)
 
-        # Scroll area so items wrap horizontally without widening the frame
         self._inv_scroll = QScrollArea()
         self._inv_scroll.setWidgetResizable(True)
         self._inv_scroll.setFixedHeight(30)
-        self._inv_scroll.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self._inv_scroll.setVerticalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._inv_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self._inv_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._inv_scroll.setStyleSheet(
             f"QScrollArea{{background:transparent;border:none;}}"
             f"QScrollBar:horizontal{{background:{C['bg3']};height:4px;}}"
@@ -1316,13 +1322,14 @@ class GameScreen(QWidget):
         self._inv_layout = QHBoxLayout(self._inv_inner)
         self._inv_layout.setContentsMargins(4,0,4,0)
         self._inv_layout.setSpacing(5)
-        self._inv_layout.setAlignment(Qt.AlignmentFlag.AlignLeft |
-                                       Qt.AlignmentFlag.AlignVCenter)
+        self._inv_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
         self._inv_scroll.setWidget(self._inv_inner)
         inv_outer.addWidget(self._inv_scroll)
         vl.addWidget(inv_f)
-        return w
+
+        scroll.setWidget(w)
+        return scroll
 
     # ── Timer ──────────────────────────────────────────────────────────────────
     def _start_timer(self):
@@ -1446,6 +1453,7 @@ class GameScreen(QWidget):
             return
         result = self.engine.parse(raw)
         self._handle(result)
+        self._cli_scroll_to_bottom()
 
     def _print(self, lines, nl=True):
         if not hasattr(self, "_cli_out"):
