@@ -1,0 +1,49 @@
+{
+  "storage": {
+    "name": "Storage Room \u2014 Level B2",
+    "puzzles": [
+      "toolbox",
+      "cabinet",
+      "fusebox",
+      "lockbox"
+    ],
+    "difficulty_sensitive": true
+  },
+  "lab": {
+    "name": "Research Lab \u2014 Level B2",
+    "puzzles": [
+      "specimenCabinet",
+      "centrifuge",
+      "chemSafe"
+    ],
+    "difficulty_sensitive": true
+  },
+  "server": {
+    "name": "Server Room \u2014 Level B2",
+    "puzzles": [
+      "terminal",
+      "networkSwitch",
+      "encryptedDrive"
+    ],
+    "difficulty_sensitive": true
+  },
+  "vault": {
+    "name": "Vault Zero \u2014 Classified Storage",
+    "puzzles": [
+      "briefcase",
+      "depositBox",
+      "safecracker"
+    ],
+    "difficulty_sensitive": true
+  },
+  "reactor": {
+    "name": "Reactor Core \u2014 Level B3",
+    "puzzles": [
+      "entryPanel",
+      "coolantValve",
+      "controlRods",
+      "meltdownOverride"
+    ],
+    "difficulty_sensitive": true
+  }
+}

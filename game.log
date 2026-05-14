@@ -1,0 +1,391 @@
+[2026-04-30 17:34:16] DB initialised — arena.db ready
+[2026-04-30 17:34:16] Application started
+[2026-04-30 18:02:42] DB initialised — arena.db ready
+[2026-04-30 18:02:42] Application started
+[2026-04-30 18:03:14] REGISTER: test
+[2026-04-30 18:03:19] LOGIN_OK: test
+[2026-04-30 18:18:19] RUN_SAVED: player=1 escaped=False time=900s room=lab
+[2026-05-02 18:47:50] DB initialised — arena.db ready
+[2026-05-02 18:47:50] Application started
+[2026-05-02 18:48:17] DB initialised — arena.db ready
+[2026-05-02 18:48:17] Application started
+[2026-05-02 18:48:39] REGISTER: test
+[2026-05-02 18:48:45] LOGIN_OK: test
+[2026-05-02 18:49:04] Mode selected: cli by test
+[2026-05-02 18:54:46] Mode selected: gui by test
+[2026-05-02 18:54:51] Mode selected: mixed by test
+[2026-05-03 17:30:30] DB initialised — arena.db ready
+[2026-05-03 17:30:30] Application started
+[2026-05-03 17:30:42] LOGIN_OK: test
+[2026-05-03 17:48:36] DB initialised — arena.db ready
+[2026-05-03 17:48:36] Application started
+[2026-05-03 17:48:46] LOGIN_OK: test
+[2026-05-03 17:49:17] DB initialised — arena.db ready
+[2026-05-03 17:49:17] Application started
+[2026-05-03 17:50:40] DB initialised — arena.db ready
+[2026-05-03 17:50:40] Application started
+[2026-05-03 17:50:47] DB initialised — arena.db ready
+[2026-05-03 17:50:47] Application started
+[2026-05-03 17:50:54] DB initialised — arena.db ready
+[2026-05-03 17:50:54] Application started
+[2026-05-03 17:58:14] DB initialised — arena.db ready
+[2026-05-03 17:58:14] Application started
+[2026-05-03 17:58:21] DB initialised — arena.db ready
+[2026-05-03 17:58:21] Application started
+[2026-05-03 17:58:27] DB initialised — arena.db ready
+[2026-05-03 17:58:27] Application started
+[2026-05-03 18:00:26] DB initialised — arena.db ready
+[2026-05-03 18:00:26] Application started
+[2026-05-03 18:00:54] DB initialised — arena.db ready
+[2026-05-03 18:00:54] Application started
+[2026-05-03 18:03:03] DB initialised — arena.db ready
+[2026-05-03 18:03:03] Application started
+[2026-05-03 18:06:00] DB initialised — arena.db ready
+[2026-05-03 18:06:00] Application started
+[2026-05-03 18:06:06] DB initialised — arena.db ready
+[2026-05-03 18:06:06] Application started
+[2026-05-03 18:06:12] DB initialised — arena.db ready
+[2026-05-03 18:06:12] Application started
+[2026-05-03 18:11:32] DB initialised — arena.db ready
+[2026-05-03 18:11:32] Application started
+[2026-05-03 18:12:18] DB initialised — arena.db ready
+[2026-05-03 18:12:18] Application started
+[2026-05-03 18:12:27] DB initialised — arena.db ready
+[2026-05-03 18:12:27] Application started
+[2026-05-03 18:12:33] DB initialised — arena.db ready
+[2026-05-03 18:12:33] Application started
+[2026-05-03 18:12:39] DB initialised — arena.db ready
+[2026-05-03 18:12:39] Application started
+[2026-05-04 16:17:22] DB initialised — arena.db ready
+[2026-05-04 16:17:22] Application started
+[2026-05-04 16:17:31] LOGIN_OK: test
+[2026-05-04 16:18:47] Mode selected: mixed by test
+[2026-05-04 16:19:11] Mode selected: mixed by test
+[2026-05-04 16:19:15] Mode selected: gui by test
+[2026-05-04 16:19:43] Mode selected: gui by test
+[2026-05-04 16:19:48] Mode selected: cli by test
+[2026-05-04 16:19:54] Mode selected: gui by test
+[2026-05-04 16:20:12] Mode selected: mixed by test
+[2026-05-04 16:32:53] DB initialised — arena.db ready
+[2026-05-04 16:32:53] Application started
+[2026-05-04 16:32:59] LOGIN_OK: test
+[2026-05-04 16:33:43] Mode selected: mixed by test
+[2026-05-04 16:36:08] Mode selected: gui by test
+[2026-05-04 16:41:28] DB initialised — arena.db ready
+[2026-05-04 16:41:28] Application started
+[2026-05-04 16:41:34] LOGIN_OK: test
+[2026-05-04 16:41:39] Mode selected: mixed by test
+[2026-05-04 16:41:45] DB initialised — arena.db ready
+[2026-05-04 16:41:45] Application started
+[2026-05-04 16:41:52] LOGIN_OK: test
+[2026-05-04 16:41:54] Mode selected: gui by test
+[2026-05-04 16:42:08] DB initialised — arena.db ready
+[2026-05-04 16:42:08] Application started
+[2026-05-04 16:42:15] LOGIN_OK: test
+[2026-05-04 16:42:17] Mode selected: cli by test
+[2026-05-04 16:42:21] Mode selected: gui by test
+[2026-05-04 16:43:55] DB initialised — arena.db ready
+[2026-05-04 16:43:55] Application started
+[2026-05-04 16:44:02] LOGIN_OK: test
+[2026-05-04 16:44:04] Mode selected: gui by test
+[2026-05-04 16:44:33] Mode selected: mixed by test
+[2026-05-04 16:45:51] Mode selected: mixed by test
+[2026-05-04 16:46:45] DB initialised — arena.db ready
+[2026-05-04 16:46:45] Application started
+[2026-05-04 16:46:51] LOGIN_OK: test
+[2026-05-04 16:46:54] Mode selected: mixed by test
+[2026-05-04 16:47:52] DB initialised — arena.db ready
+[2026-05-04 16:47:52] Application started
+[2026-05-04 16:47:59] LOGIN_OK: test
+[2026-05-04 16:48:01] Mode selected: gui by test
+[2026-05-04 16:49:44] DB initialised — arena.db ready
+[2026-05-04 16:49:44] Application started
+[2026-05-04 16:49:50] LOGIN_OK: test
+[2026-05-04 16:49:59] Mode selected: gui by test
+[2026-05-04 17:04:59] RUN_SAVED: player=1 escaped=False time=900s room=lab
+[2026-05-06 14:48:21] DB initialised — arena.db ready
+[2026-05-06 14:48:21] Application started
+[2026-05-06 14:48:31] LOGIN_OK: test
+[2026-05-06 14:48:35] Mode selected: mixed by test
+[2026-05-06 14:48:49] Mode selected: gui by test
+[2026-05-06 14:50:30] RUN_SAVED: player=1 escaped=True time=101s room=vault
+[2026-05-06 14:50:30] ESCAPED: test time=101s token=8573e43f-101
+[2026-05-06 14:50:40] RUN_SAVED: player=1 escaped=True time=110s room=vault
+[2026-05-06 14:50:40] ESCAPED: test time=110s token=8a762ab5-110
+[2026-05-06 14:50:40] RUN_SAVED: player=1 escaped=True time=111s room=vault
+[2026-05-06 14:50:40] ESCAPED: test time=111s token=89762922-111
+[2026-05-06 14:50:40] RUN_SAVED: player=1 escaped=True time=111s room=vault
+[2026-05-06 14:50:40] ESCAPED: test time=111s token=89762922-111
+[2026-05-06 14:50:41] RUN_SAVED: player=1 escaped=True time=112s room=vault
+[2026-05-06 14:50:41] ESCAPED: test time=112s token=8876278f-112
+[2026-05-06 14:50:41] RUN_SAVED: player=1 escaped=True time=112s room=vault
+[2026-05-06 14:50:41] ESCAPED: test time=112s token=8876278f-112
+[2026-05-06 14:52:51] Mode selected: mixed by test
+[2026-05-06 14:53:04] Mode selected: cli by test
+[2026-05-06 14:53:59] Mode selected: mixed by test
+[2026-05-06 14:54:06] Mode selected: gui by test
+[2026-05-06 14:54:35] Mode selected: mixed by test
+[2026-05-06 15:00:09] DB initialised — arena.db ready
+[2026-05-06 15:00:09] Application started
+[2026-05-06 15:00:15] LOGIN_OK: test
+[2026-05-06 15:00:25] Mode selected: gui by test
+[2026-05-06 15:03:01] DB initialised — arena.db ready
+[2026-05-06 15:03:01] Application started
+[2026-05-06 15:03:06] LOGIN_OK: test
+[2026-05-06 15:03:08] Mode selected: gui by test
+[2026-05-06 15:06:20] DB initialised — arena.db ready
+[2026-05-06 15:06:20] Application started
+[2026-05-06 15:06:31] LOGIN_OK: test
+[2026-05-06 15:06:42] LOGIN_OK: test
+[2026-05-06 15:06:50] LOGIN_OK: test
+[2026-05-06 15:07:17] Mode selected: gui by test
+[2026-05-06 15:07:59] Mode selected: cli by test
+[2026-05-06 15:08:22] Mode selected: mixed by test
+[2026-05-06 15:11:03] DB initialised — arena.db ready
+[2026-05-06 15:11:03] Application started
+[2026-05-06 15:11:08] LOGIN_OK: test
+[2026-05-06 15:11:13] Mode selected: gui by test
+[2026-05-06 15:12:13] RUN_SAVED: player=1 escaped=True time=59s room=vault
+[2026-05-06 15:12:13] ESCAPED: test time=59s token=2826129b-59
+[2026-05-06 15:12:45] LOGIN_OK: test
+[2026-05-06 15:19:05] DB initialised — arena.db ready
+[2026-05-06 15:19:05] Application started
+[2026-05-06 15:19:11] LOGIN_OK: test
+[2026-05-06 15:19:13] Mode selected: gui by test
+[2026-05-06 15:22:11] DB initialised — arena.db ready
+[2026-05-06 15:22:11] Application started
+[2026-05-06 15:22:17] LOGIN_OK: test
+[2026-05-06 15:22:19] Mode selected: gui by test
+[2026-05-06 15:23:26] DB initialised — arena.db ready
+[2026-05-06 15:23:26] Application started
+[2026-05-06 15:23:32] LOGIN_OK: test
+[2026-05-06 15:23:45] Mode selected: mixed by test
+[2026-05-06 15:24:01] Mode selected: mixed by test
+[2026-05-06 20:13:38] DB initialised — arena.db ready
+[2026-05-06 20:13:38] Application started
+[2026-05-06 20:13:45] LOGIN_OK: test
+[2026-05-06 20:14:13] REGISTER: betatester
+[2026-05-06 20:14:21] LOGIN_OK: betatester
+[2026-05-06 20:14:45] Mode selected: mixed by betatester
+[2026-05-06 20:29:45] RUN_SAVED: player=2 escaped=False time=900s room=storage
+[2026-05-08 17:56:22] DB initialised — arena.db ready
+[2026-05-08 17:56:22] Application started
+[2026-05-08 17:56:28] LOGIN_OK: test
+[2026-05-08 17:56:40] Mode selected: gui by test
+[2026-05-08 17:56:44] Mode selected: mixed by test
+[2026-05-08 17:57:07] Mode selected: mixed by test
+[2026-05-08 18:12:08] RUN_SAVED: player=1 escaped=False time=900s room=storage
+[2026-05-08 19:18:21] Mode selected: mixed by test
+[2026-05-08 19:18:47] Mode selected: gui by test
+[2026-05-08 19:25:21] DB initialised — arena.db ready
+[2026-05-08 19:25:21] Application started
+[2026-05-08 19:25:26] LOGIN_OK: test
+[2026-05-08 19:27:08] Mode selected: mixed by test
+[2026-05-08 19:27:13] Mode selected: gui by test
+[2026-05-08 19:28:20] RUN_SAVED: player=1 escaped=True time=66s room=vault
+[2026-05-08 19:28:20] ESCAPED: test time=66s token=b72daf7d-66
+[2026-05-08 22:12:17] DB initialised — arena.db ready
+[2026-05-08 22:12:17] Application started
+[2026-05-08 22:12:24] LOGIN_OK: test
+[2026-05-09 23:25:36] DB initialised — arena.db ready
+[2026-05-09 23:25:36] Application started
+[2026-05-09 23:25:42] LOGIN_OK: test
+[2026-05-09 23:25:56] Mode=mixed diff=easy player=test
+[2026-05-09 23:28:55] DB initialised — arena.db ready
+[2026-05-09 23:28:55] Application started
+[2026-05-09 23:29:01] LOGIN_OK: test
+[2026-05-09 23:29:09] Mode=mixed diff=easy player=test
+[2026-05-09 23:29:25] Mode=mixed diff=hard player=test
+[2026-05-09 23:32:50] DB initialised — arena.db ready
+[2026-05-09 23:32:50] Application started
+[2026-05-09 23:32:56] LOGIN_OK: test
+[2026-05-09 23:33:04] Mode=mixed diff=normal player=test
+[2026-05-09 23:33:28] Mode=mixed diff=nightmare player=test
+[2026-05-09 23:40:29] RUN_SAVED: player=1 escaped=False diff=nightmare xp=14 time=420s room=server
+[2026-05-10 14:45:59] DB initialised — arena.db ready
+[2026-05-10 14:45:59] Application started
+[2026-05-10 14:46:07] LOGIN_OK: test
+[2026-05-10 14:46:30] Mode=mixed diff=nightmare player=test
+[2026-05-10 14:51:09] Mode=mixed diff=easy player=test
+[2026-05-10 14:52:24] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=75s room=vault
+[2026-05-10 14:52:24] ESCAPED: test time=75s token=a82b5949-75
+[2026-05-10 14:52:25] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=76s room=vault
+[2026-05-10 14:52:25] ESCAPED: test time=76s token=a52b5490-76
+[2026-05-10 14:52:27] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=78s room=vault
+[2026-05-10 14:52:27] ESCAPED: test time=78s token=b32b6a9a-78
+[2026-05-10 14:52:28] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=78s room=vault
+[2026-05-10 14:52:28] ESCAPED: test time=78s token=b32b6a9a-78
+[2026-05-10 14:52:31] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=82s room=vault
+[2026-05-10 14:52:31] ESCAPED: test time=82s token=2b466aff-82
+[2026-05-10 15:06:49] DB initialised — arena.db ready
+[2026-05-10 15:06:49] Application started
+[2026-05-10 15:06:58] LOGIN_FAIL: test
+[2026-05-10 15:07:00] LOGIN_OK: test
+[2026-05-10 15:07:15] Mode=gui diff=easy player=test
+[2026-05-10 15:07:21] Mode=mixed diff=easy player=test
+[2026-05-10 15:08:22] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=60s room=vault
+[2026-05-10 15:08:22] ESCAPED: test time=60s token=b12da60b-60
+[2026-05-10 15:08:23] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=61s room=vault
+[2026-05-10 15:08:23] ESCAPED: test time=61s token=b02da478-61
+[2026-05-10 15:08:24] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=63s room=vault
+[2026-05-10 15:08:24] ESCAPED: test time=63s token=b22da79e-63
+[2026-05-10 15:08:26] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=64s room=vault
+[2026-05-10 15:08:26] ESCAPED: test time=64s token=b52dac57-64
+[2026-05-10 15:08:33] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=72s room=vault
+[2026-05-10 15:08:33] ESCAPED: test time=72s token=a92b5adc-72
+[2026-05-10 15:08:44] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=83s room=reactor
+[2026-05-10 15:08:44] ESCAPED: test time=83s token=2a46696c-83
+[2026-05-10 15:08:46] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=84s room=reactor
+[2026-05-10 15:08:46] ESCAPED: test time=84s token=294667d9-84
+[2026-05-10 15:08:47] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=85s room=reactor
+[2026-05-10 15:08:47] ESCAPED: test time=85s token=28466646-85
+[2026-05-10 15:08:48] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=87s room=reactor
+[2026-05-10 15:08:48] ESCAPED: test time=87s token=26466320-87
+[2026-05-10 15:08:49] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=88s room=reactor
+[2026-05-10 15:08:49] ESCAPED: test time=88s token=35467abd-88
+[2026-05-10 15:08:57] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=96s room=reactor
+[2026-05-10 15:08:57] ESCAPED: test time=96s token=254422f6-96
+[2026-05-10 15:08:58] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=97s room=reactor
+[2026-05-10 15:08:58] ESCAPED: test time=97s token=26442489-97
+[2026-05-10 15:09:00] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=98s room=reactor
+[2026-05-10 15:09:00] ESCAPED: test time=98s token=2f4432b4-98
+[2026-05-10 15:09:00] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=99s room=reactor
+[2026-05-10 15:09:00] ESCAPED: test time=99s token=30443447-99
+[2026-05-10 15:09:04] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=103s room=reactor
+[2026-05-10 15:09:04] ESCAPED: test time=103s token=8773e765-103
+[2026-05-10 15:09:05] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=103s room=reactor
+[2026-05-10 15:09:05] ESCAPED: test time=103s token=8773e765-103
+[2026-05-10 15:09:08] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=106s room=reactor
+[2026-05-10 15:09:08] ESCAPED: test time=106s token=8273df86-106
+[2026-05-10 15:09:57] Mode=mixed diff=easy player=test
+[2026-05-10 15:10:42] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=44s room=vault
+[2026-05-10 15:10:42] ESCAPED: test time=44s token=292852c5-44
+[2026-05-10 15:10:43] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=45s room=vault
+[2026-05-10 15:10:43] ESCAPED: test time=45s token=28285132-45
+[2026-05-10 15:10:44] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=46s room=vault
+[2026-05-10 15:10:44] ESCAPED: test time=46s token=27284f9f-46
+[2026-05-10 15:10:50] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=52s room=vault
+[2026-05-10 15:10:50] ESCAPED: test time=52s token=21260796-52
+[2026-05-10 15:11:10] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=72s room=vault
+[2026-05-10 15:11:10] ESCAPED: test time=73s token=a92b5adc-72
+[2026-05-10 15:14:19] DB initialised — arena.db ready
+[2026-05-10 15:14:19] Application started
+[2026-05-10 15:14:25] LOGIN_OK: test
+[2026-05-10 15:14:34] Mode=mixed diff=easy player=test
+[2026-05-10 15:15:32] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=58s room=vault
+[2026-05-10 15:15:32] ESCAPED: test full=False time=58s token=27261108-58
+[2026-05-10 15:15:55] Mode=mixed diff=easy player=test
+[2026-05-10 15:16:45] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=50s room=vault
+[2026-05-10 15:16:45] ESCAPED: test full=False time=50s token=1f260470-50
+[2026-05-10 15:17:03] Mode=mixed diff=easy player=test
+[2026-05-10 15:18:27] RUN_SAVED: player=1 escaped=True diff=easy xp=200 time=83s room=vault
+[2026-05-10 15:18:27] ESCAPED: test full=False time=83s token=2a46696c-83
+[2026-05-10 21:06:07] DB initialised — arena.db ready
+[2026-05-10 21:06:07] Application started
+[2026-05-10 21:06:13] LOGIN_OK: test
+[2026-05-10 21:08:14] DB initialised — arena.db ready
+[2026-05-10 21:08:14] Application started
+[2026-05-10 21:08:20] LOGIN_OK: test
+[2026-05-10 21:08:36] Mode=mixed diff=easy player=test
+[2026-05-10 22:32:56] DB initialised — arena.db ready
+[2026-05-10 22:32:56] Application started
+[2026-05-10 22:33:03] LOGIN_FAIL: test
+[2026-05-10 22:33:15] LOGIN_OK: test
+[2026-05-10 22:34:34] Mode=mixed diff=hard player=test
+[2026-05-10 22:36:02] Mode=mixed diff=normal player=test
+[2026-05-10 22:51:03] RUN_SAVED: player=1 escaped=False diff=normal xp=30 time=900s room=storage
+[2026-05-11 17:27:33] DB initialised — arena.db ready
+[2026-05-11 17:27:33] Application started
+[2026-05-11 17:27:40] LOGIN_OK: test
+[2026-05-11 17:27:53] Mode=mixed diff=easy player=test
+[2026-05-11 17:28:02] Mode=gui diff=normal player=test
+[2026-05-11 17:29:44] Mode=mixed diff=normal player=test
+[2026-05-12 14:24:33] DB initialised — arena.db ready
+[2026-05-12 14:24:33] Application started
+[2026-05-12 14:24:40] LOGIN_OK: test
+[2026-05-12 14:24:58] Mode=mixed diff=normal player=test
+[2026-05-12 14:25:18] LOGIN_OK: test
+[2026-05-12 14:33:12] DB initialised — arena.db ready
+[2026-05-12 14:33:12] Application started
+[2026-05-12 14:33:20] LOGIN_OK: test
+[2026-05-12 14:33:35] Mode=mixed diff=nightmare player=test
+[2026-05-12 14:33:49] Mode=mixed diff=easy player=test
+[2026-05-12 14:35:13] RUN_SAVED: player=1 escaped=True diff=easy xp=500 time=83s room=reactor
+[2026-05-12 14:35:13] ESCAPED: test full=True time=83s token=2a46696c-83
+[2026-05-12 19:49:54] DB initialised — arena.db ready
+[2026-05-12 19:49:54] Application started
+[2026-05-12 19:53:37] DB initialised — arena.db ready
+[2026-05-12 19:53:37] Application started
+[2026-05-12 19:53:44] LOGIN_OK: test
+[2026-05-12 19:53:51] LOGIN_OK: test
+[2026-05-13 13:23:20] DB initialised — arena.db ready
+[2026-05-13 13:23:20] Application started
+[2026-05-13 13:23:28] LOGIN_OK: test
+[2026-05-13 13:23:50] Mode=cli diff=normal player=test
+[2026-05-13 13:24:02] Mode=mixed diff=easy player=test
+[2026-05-13 13:31:36] Mode=mixed diff=normal player=test
+[2026-05-13 13:31:48] DB initialised — arena.db ready
+[2026-05-13 13:31:48] Application started
+[2026-05-13 13:31:56] LOGIN_OK: test
+[2026-05-13 13:32:02] LOGIN_FAIL: test
+[2026-05-13 13:32:06] LOGIN_OK: test
+[2026-05-13 15:01:53] DB initialised — arena.db ready
+[2026-05-13 15:01:53] Application started
+[2026-05-13 15:02:01] LOGIN_OK: test
+[2026-05-13 15:02:06] Mode=mixed diff=normal player=test
+[2026-05-13 15:02:14] Mode=gui diff=normal player=test
+[2026-05-13 15:02:21] Mode=cli diff=normal player=test
+[2026-05-13 20:08:27] DB initialised — arena.db ready
+[2026-05-13 20:08:27] Application started
+[2026-05-13 20:12:13] DB initialised — arena.db ready
+[2026-05-13 20:12:13] Application started
+[2026-05-13 21:23:53] DB initialised — arena.db ready
+[2026-05-13 21:23:53] Application started
+[2026-05-13 21:24:03] LOGIN_OK: test
+[2026-05-13 21:24:11] Mode=mixed diff=normal player=test
+[2026-05-13 21:24:16] Mode=gui diff=hard player=test
+[2026-05-13 21:24:21] Mode=gui diff=normal player=test
+[2026-05-13 21:24:25] Mode=cli diff=hard player=test
+[2026-05-13 21:33:23] DB initialised — arena.db ready
+[2026-05-13 21:33:23] Application started
+[2026-05-13 21:33:33] LOGIN_OK: test
+[2026-05-13 21:36:13] DB initialised — arena.db ready
+[2026-05-13 21:36:13] Application started
+[2026-05-13 21:36:20] LOGIN_OK: test
+[2026-05-14 21:02:17] DB initialised — arena.db ready
+[2026-05-14 21:02:17] Application started
+[2026-05-14 21:02:28] LOGIN_OK: test
+[2026-05-14 21:02:33] Mode=mixed diff=normal player=test
+[2026-05-14 21:17:34] RUN_SAVED: player=1 escaped=False diff=normal xp=30 time=900s room=storage
+[2026-05-14 23:14:16] DB initialised — arena.db ready
+[2026-05-14 23:14:16] Application started
+[2026-05-14 23:14:28] LOGIN_OK: test
+[2026-05-14 23:14:33] Mode=mixed diff=normal player=test
+[2026-05-14 23:15:50] DB initialised — arena.db ready
+[2026-05-14 23:15:50] Application started
+[2026-05-15 00:09:52] DB initialised — arena.db ready
+[2026-05-15 00:09:52] Application started
+[2026-05-15 00:09:58] LOGIN_OK: test
+[2026-05-15 00:10:02] Mode=mixed diff=normal player=test
+[2026-05-15 00:19:41] DB initialised — arena.db ready
+[2026-05-15 00:19:41] Application started
+[2026-05-15 00:19:47] LOGIN_OK: test
+[2026-05-15 00:19:49] Mode=mixed diff=normal player=test
+[2026-05-15 00:24:58] DB initialised — arena.db ready
+[2026-05-15 00:24:58] Application started
+[2026-05-15 00:25:05] DB initialised — arena.db ready
+[2026-05-15 00:25:05] Application started
+[2026-05-15 00:25:12] DB initialised — arena.db ready
+[2026-05-15 00:25:12] Application started
+[2026-05-15 01:13:27] DB initialised — arena.db ready
+[2026-05-15 01:13:27] Application started
+[2026-05-15 01:13:33] LOGIN_OK: test
+[2026-05-15 01:15:10] DB initialised — arena.db ready
+[2026-05-15 01:15:10] Application started
+[2026-05-15 01:15:16] LOGIN_OK: test
+[2026-05-15 01:17:22] DB initialised — arena.db ready
+[2026-05-15 01:17:22] Application started
+[2026-05-15 01:17:27] LOGIN_OK: test
+[2026-05-15 01:19:11] DB initialised — arena.db ready
+[2026-05-15 01:19:11] Application started
+[2026-05-15 01:19:17] LOGIN_OK: test
